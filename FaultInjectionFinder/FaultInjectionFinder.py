@@ -5,4 +5,4 @@ class FaultInjectionFinder():
         Initializer for the FaultInjetionFinder
         :param binary_path: the path to the binary to examine
         """
-        
+        pass
