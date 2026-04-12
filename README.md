@@ -16,3 +16,6 @@ For triggers, we could do the following:
 1. Power analysis
 2. IO accesses
 3. Count clock cycles
+
+# Notes
+`arm-none-eabi-objdump -D -b binary -m arm <binary> | less` to examine the raw binary as assembly
