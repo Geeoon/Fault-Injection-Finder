@@ -2,8 +2,7 @@
 #include <errno.h>
 
 #define EXIT_ADDR (int*)0x10000
-#define READ_ADDR (char*)0x10010
-#define WRITE_ADDR (char*)0x10020
+#define RW_ADDR (char*)0x10010
 
 // unicorn hook
 void _exit(int status) {
@@ -12,12 +11,12 @@ void _exit(int status) {
 }
 
 int _read(int fd, char *buf, int len) {
-    for (int i = 0; i < len; i++) buf[i] = *READ_ADDR;
+    for (int i = 0; i < len; i++) buf[i] = *RW_ADDR;
     return len;
 }
 
 int _write(int fd, char *buf, int len) {
-    for (int i = 0; i < len; i++) *WRITE_ADDR = buf[i];
+    for (int i = 0; i < len; i++) *RW_ADDR = buf[i];
     return len;
 }
 
