@@ -1,12 +1,28 @@
-CC=gcc
-
+# CC=gcc
+CC=arm-none-eabi-gcc
+OBJCOPY=arm-none-eabi-objcopy
 CFLAGS += -O0
-CFLAGS += -g2
+# CFLAGS += --specs=nosys.specs
+# CFLAGS += -nostdlib
 
-all: infinite_loop.elf password.elf
 
-infinite_loop.elf: source/infinite_loop/main.c
+# CFLAGS += -g2
+
+.PRECIOUS: %.s %.elf
+
+all: infinite_loop.bin password.bin
+
+stubs.s: stubs/stubs.c
+	$(CC) $(CFLAGS) -S $^ -o $@
+
+%.s: source/%/main.c
+	$(CC) $(CFLAGS) -S $^ -o $@
+
+%.elf: %.s stubs.s
 	$(CC) $(CFLAGS) $^ -o $@
 
-password.elf: source/password/main.c
-	$(CC) $(CFLAGS) $^ -o $@
+%.bin: %.elf
+	$(OBJCOPY) -O binary $< $@
+
+clean:
+	rm -f *.s *.elf *.o *.bin
