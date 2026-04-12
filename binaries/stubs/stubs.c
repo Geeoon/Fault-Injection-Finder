@@ -18,7 +18,7 @@ int _read(int fd, char *buf, int len) {
 
 int _write(int fd, char *buf, int len) {
     for (int i = 0; i < len; i++) *WRITE_ADDR = buf[i];
-    return len;  // pretend we wrote it, unicorn hook will intercept
+    return len;
 }
 
 // should NOT be used

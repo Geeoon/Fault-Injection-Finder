@@ -2,10 +2,12 @@
 CC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
 CFLAGS += -O0
-# CFLAGS += --specs=nosys.specs
+CFLAGS += -ffunction-sections
+CFLAGS += -fdata-sections
+LDFLAGS += -Wl,--gc-sections
+LDFLAGS += -nostartfiles
 # CFLAGS += -nostdlib
-
-
+# CFLAGS += --specs=nosys.specs
 # CFLAGS += -g2
 
 .PRECIOUS: %.s %.elf
@@ -18,11 +20,11 @@ stubs.s: stubs/stubs.c
 %.s: source/%/main.c
 	$(CC) $(CFLAGS) -S $^ -o $@
 
-%.elf: %.s stubs.s
-	$(CC) $(CFLAGS) $^ -o $@
+%.elf: %.s stubs.s startup.s
+	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
 %.bin: %.elf
 	$(OBJCOPY) -O binary $< $@
 
 clean:
-	rm -f *.s *.elf *.o *.bin
+	rm -f infinite_loop.* password.* stubs.*
