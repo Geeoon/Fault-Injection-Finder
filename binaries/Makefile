@@ -12,7 +12,7 @@ LDFLAGS += -nostartfiles
 
 .PRECIOUS: %.s %.elf
 
-all: infinite_loop.bin password.bin
+all: infinite_loop.bin password.bin exit.bin
 
 stubs.s: stubs/stubs.c
 	$(CC) $(CFLAGS) -S $^ -o $@
