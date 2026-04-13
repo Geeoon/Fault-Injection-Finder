@@ -1,8 +1,8 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#define EXIT_ADDR (int*)0x10000
-#define RW_ADDR (char*)0x11000
+#define EXIT_ADDR (int*)0x3000000
+#define RW_ADDR (char*)0x3001000
 
 // unicorn hook
 void _exit(int status) {
@@ -19,6 +19,9 @@ int _write(int fd, char *buf, int len) {
     for (int i = 0; i < len; i++) *RW_ADDR = buf[i];
     return len;
 }
+
+void _fini(void) {}
+void _init(void) {}
 
 // should NOT be used
 int _lseek(int fd, int offset, int whence) {

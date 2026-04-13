@@ -10,14 +10,14 @@ LR = arm_const.UC_ARM_REG_LR
 SP = arm_const.UC_ARM_REG_SP
 NOP = b"\x00\xf0\x20\xe3"
 
-BINARY_ADDRESS = 0x1000000  # start address of the binary in our emulator's memory
+BINARY_ADDRESS = 0x0  # start address of the binary in our emulator's memory
 BINARY_MAX_SIZE = 0x10000  # allow binaries up to 64KiB
 
 RAM_ADDRESS = 0x2000000  # start address of the RAM avaible to the program
 RAM_SIZE = 0x10000  # allocate 64KiB for RAM
 
-EXIT_ADDRESS = 0x10000  # special address for hooking into exits
-RW_ADDRESS = 0x11000  # special address for hooking into IO read and write operations
+EXIT_ADDRESS = 0x3000000  # special address for hooking into exits
+RW_ADDRESS = 0x3001000  # special address for hooking into IO read and write operations
 
 class FIEngine():
     """
@@ -28,7 +28,6 @@ class FIEngine():
         """
         :param binary: the binary to examine
         """
-        logging.debug("init!")
         # initalize emulator and capstone disassembler 
         self.md = Cs(CS_ARCH_ARM, CS_MODE_ARM)
         self.mu = Uc(UC_ARCH_ARM, UC_MODE_ARM)
@@ -40,8 +39,15 @@ class FIEngine():
         self.mu.hook_add(UC_HOOK_MEM_READ | UC_HOOK_MEM_WRITE, self._rw_hook, begin=RW_ADDRESS, end=RW_ADDRESS)  # add hook for IO read/write
         self.mu.hook_add(UC_HOOK_MEM_INVALID, self._mem_invalid_hook)
         self.binary = binary
+
+    def _to_signed_32(self, unsigned_val):
+        # If the value is greater than or equal to 2^31, it's negative in 2's complement
+        if unsigned_val >= 0x80000000:
+            return unsigned_val - 0x100000000
+        return unsigned_val
     
     def _exit_hook(self, mu, access, address, size, value, user_data) -> bool:
+        value = self._to_signed_32(value)
         logging.info(f"Emulation stopped with exit code {value}")
         self.exit_code = value
         mu.emu_stop()
