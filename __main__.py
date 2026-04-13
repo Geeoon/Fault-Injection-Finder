@@ -1,11 +1,12 @@
 import logging
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
-    level=logging.DEBUG
+    level=logging.INFO
 )
 
 from FaultInjectionFinder import FaultInjectionFinder
 
-finder = FaultInjectionFinder('./binaries/echo.bin')
+finder = FaultInjectionFinder('./binaries/infinite_loop.bin', b'whatever', b'escaped the loop')
 
-finder.find_faults()
+for fault in finder.find_faults():
+    print(fault)
