@@ -34,16 +34,20 @@ class FaultInjectionFinder():
             raise e
 
     def find_faults(self):
+        logging.info("Searching for faults...")
         successes = []
         for i in range(len(self.engine.binary) // 4):
-            skipped_instruction, res_output, res_exit, res_regs = self.engine.run(i, max_iter=1000000)
-            if self.expected_output and self.expected_output == res_output: 
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs))
+            skipped_instruction, res_output, res_exit, res_regs, pc_control = self.engine.run(i, max_iter=1000000)
+            if pc_control:
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control))
+            elif self.expected_output and self.expected_output == res_output: 
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control))
             elif self.expected_exit is not None and self.expected_exit == res_exit: 
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs))
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control))
             elif self.expected_regs:  # todo: finish this
                 pass
                 # successes.append((skipped_instruction, res_output, res_exit, res_regs))
             
+        logging.info("Done searching for faults.")
         return successes
                 

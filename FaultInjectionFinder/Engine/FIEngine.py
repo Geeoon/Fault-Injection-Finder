@@ -19,6 +19,12 @@ RAM_SIZE = 0x10000  # allocate 64KiB for RAM
 EXIT_ADDRESS = 0x3000000  # special address for hooking into exits
 RW_ADDRESS = 0x3001000  # special address for hooking into IO read and write operations
 
+class InvalidFetch(Exception):
+    """
+    Exception raised for invalid fetches
+    """
+    pass
+
 class FIEngine():
     """
     The main driver for running binaries with faults.
@@ -31,6 +37,21 @@ class FIEngine():
         self.md = Cs(CS_ARCH_ARM, CS_MODE_ARM)  # initialize capstone disassembler
         self.binary = binary
         self.input = input
+        self._mutated_input = input
+
+    def _init_emulator(self):
+        # reset emulator
+        self.output = b''
+        self.exit_code = None
+        self._mutated_input = self.input
+        self._invalid_fetch = None
+        self._create_unicorn()
+        self.mu.reg_write(SP, RAM_ADDRESS + RAM_SIZE)  # set the stack pointer to the top of our RAM
+        self.mu.reg_write(PC, 0x0)  # reset PC to start of binary
+        self.mu.reg_write(LR, 0x0)  # reset LR
+        # reset all general purpose registers
+        for reg in R:
+            self.mu.reg_write(reg, 0x0)
 
     def _create_unicorn(self):
         # initalize emulator
@@ -42,13 +63,18 @@ class FIEngine():
         self.mu.hook_add(UC_HOOK_MEM_WRITE, self._exit_hook, begin=EXIT_ADDRESS, end=EXIT_ADDRESS + 0x4)  # add hook for exit
         self.mu.hook_add(UC_HOOK_MEM_READ | UC_HOOK_MEM_WRITE, self._rw_hook, begin=RW_ADDRESS, end=RW_ADDRESS)  # add hook for IO read/write
         self.mu.hook_add(UC_HOOK_MEM_INVALID, self._mem_invalid_hook)
-        self.mu.reg_write(SP, RAM_ADDRESS + RAM_SIZE)  # set the stack pointer to the top of our RAM
 
-    def _to_signed_32(self, unsigned_val):
+    def _to_signed_32(self, unsigned_val) -> int:
         # If the value is greater than or equal to 2^31, it's negative in 2's complement
         if unsigned_val >= 0x80000000:
             return unsigned_val - 0x100000000
         return unsigned_val
+    
+    def _flip_bits(self, input: bytes) -> bytes:
+        out = b''
+        for byte in input:
+            out += out + byte ^ 0xFF
+        return out
     
     def _exit_hook(self, mu, access, address, size, value, user_data) -> bool:
         value = self._to_signed_32(value)
@@ -62,9 +88,9 @@ class FIEngine():
             logging.debug(f"IO write: {value.to_bytes(1)}")
             self.output += value.to_bytes(1)
         elif access == UC_MEM_READ:
-            if self.input:
-                data = (self.input[0]).to_bytes(1)
-                self.input = self.input[1:]
+            if self._mutated_input:
+                data = (self._mutated_input[0]).to_bytes(1)
+                self._mutated_input = self._mutated_input[1:]
             else:
                 data = b'\0'
             logging.debug(f"IO read, sending {data}")
@@ -74,6 +100,15 @@ class FIEngine():
     def _mem_invalid_hook(self, mu, access, address, size, value, user_data) -> bool:
         if access == UC_MEM_FETCH_UNMAPPED:
             logging.warning(f"Fetch from unmapped address: {hex(address)}")
+            if self._invalid_fetch is None:
+                self._invalid_fetch = address  # store the invalid access
+                # we will re-run this case with a different input and see if 
+                # we are able to influence the program counter
+            else:
+                # has our input influenced the PC?
+                self._pc_control = self._invalid_fetch == address
+            self.mu.emu_stop()
+            raise InvalidFetch()
         elif access == UC_MEM_READ_UNMAPPED:
             logging.warning(f"Read from unmapped address: {hex(address)}")
         elif access == UC_MEM_WRITE_UNMAPPED:
@@ -86,10 +121,7 @@ class FIEngine():
         :param max_iter: the max number of iterations to run the program for.  Set to 0 to run until exit
         """
         logging.debug("Starting the emulation")
-        # reset emulator
-        self.output = b''
-        self.exit_code = None
-        self._create_unicorn()
+        self._init_emulator()
 
         # convert to byte array so we can mutate it
         code_arr = bytearray(self.binary)
@@ -103,18 +135,26 @@ class FIEngine():
                 skipped_instruction = decoded[0]
                 logging.debug(f"Injecting a fault at {fault_index}, replacing {skipped_instruction.mnemonic} {skipped_instruction.op_str} with NOP")
             code_arr[byte_offset:byte_offset + 4] = NOP
-            # logging.debug(f"Injected fault, below is the new code with a NOP as the fault at index {fault_index}:")
-            # for i in self.md.disasm(code_arr, 0x0):
-            #     logging.debug("0x%x:\t%s\t%s" %(i.address, i.mnemonic, i.op_str))
 
         # write the binary to memory
         self.mu.mem_write(BINARY_ADDRESS, bytes(code_arr))  # write our binary to memory
 
+        # used for keeping track of whether our input influences the PC
+        self._pc_control = False
         try:
             self.mu.emu_start(BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
         except UcError as e:
             logging.error(f"Emulator crashed (likely just due to the binary being corrupted): {str(e)}")
-
+        except InvalidFetch as e:
+            logging.info(f"Emulator fetched invalid instruction.  Trying again with a different input.")
+            self._init_emulator()
+            # flip all bits for normal input
+            self._mutated_input = self._flip_bits(self.input)
+            self._pc_control = True
+            try:
+                self.mu.emu_start(BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
+            except InvalidFetch as e:
+                pass
         if self.exit_code is None:
             logging.debug("Emulation reached max iterations instead (i.e., the program did not exit in time)")
 
@@ -122,7 +162,7 @@ class FIEngine():
         final_registers = {}
         for i in range(len(R)):
             final_registers[f'R{i}'] = self.mu.reg_read(R[i])
-        return decoded, self.output, self.exit_code, final_registers
+        return decoded, self.output, self.exit_code, final_registers, self._pc_control
 
         # print registers
         # logging.info("Emulation done. Below is the CPU context")

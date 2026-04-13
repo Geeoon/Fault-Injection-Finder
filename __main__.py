@@ -7,10 +7,10 @@ logging.basicConfig(
 from FaultInjectionFinder import FaultInjectionFinder
 
 # finder = FaultInjectionFinder('./binaries/infinite_loop.bin', input=b'whatever', expected_output=b'escaped the loop')
-finder = FaultInjectionFinder('./binaries/infinite_loop.bin', input=b'wrong\n', expected_exit=0)
+finder = FaultInjectionFinder('./binaries/password.bin', input=b'wrong\n', expected_exit=0)
 
 for fault in finder.find_faults():
-    i, insns, output, exit_code, regs = fault
+    i, insns, output, exit_code, regs, pc_control = fault
 
     print("=" * 50)
     print(f"Fault @ instruction index: {i}")
@@ -29,5 +29,10 @@ for fault in finder.find_faults():
     for reg in sorted(regs.keys(), key=lambda x: int(x[1:])):
         val = regs[reg]
         print(f"  {reg:>4}: 0x{val:08x} ({val})")
+
+    if pc_control:
+        print("!" * 10)
+        print("Got control of the PC")
+        print("!" * 10)
 
     print()
