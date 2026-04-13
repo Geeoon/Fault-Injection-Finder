@@ -52,7 +52,7 @@ class FIEngine():
     
     def _exit_hook(self, mu, access, address, size, value, user_data) -> bool:
         value = self._to_signed_32(value)
-        logging.debug(f"Emulation stopped with exit code {value}")
+        logging.info(f"Emulation stopped with exit code {value}")
         self.exit_code = value
         mu.emu_stop()
         return True

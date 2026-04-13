@@ -39,7 +39,7 @@ class FaultInjectionFinder():
             skipped_instruction, res_output, res_exit, res_regs = self.engine.run(i, max_iter=1000000)
             if self.expected_output and self.expected_output == res_output: 
                 successes.append((i, skipped_instruction, res_output, res_exit, res_regs))
-            elif self.expected_exit and self.expected_exit == res_exit: 
+            elif self.expected_exit is not None and self.expected_exit == res_exit: 
                 successes.append((i, skipped_instruction, res_output, res_exit, res_regs))
             elif self.expected_regs:  # todo: finish this
                 pass
