@@ -9,6 +9,13 @@ from FaultInjectionFinder import FaultInjectionFinder
 # finder = FaultInjectionFinder('./binaries/infinite_loop.bin', input=b'whatever', expected_output=b'escaped the loop')
 finder = FaultInjectionFinder('./binaries/password.bin', input=b'wrong\n', expected_exit=0)
 
+print(
+"▄▖    ▜ ▗   ▄▖   ▘    ▗ ▘      ▄▖▘   ▌   \n" +
+"▙▖▀▌▌▌▐ ▜▘  ▐ ▛▌ ▌█▌▛▘▜▘▌▛▌▛▌  ▙▖▌▛▌▛▌█▌▛▘ \n" +
+"▌ █▌▙▌▐▖▐▖  ▟▖▌▌ ▌▙▖▙▖▐▖▌▙▌▌▌  ▌ ▌▌▌▙▌▙▖▌ \n" +
+"                ▙▌                        \n"
+)
+
 for fault in finder.find_faults():
     i, insns, output, exit_code, regs, pc_control = fault
 
