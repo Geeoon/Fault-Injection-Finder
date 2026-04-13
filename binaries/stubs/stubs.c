@@ -2,7 +2,7 @@
 #include <errno.h>
 
 #define EXIT_ADDR (int*)0x10000
-#define RW_ADDR (char*)0x10010
+#define RW_ADDR (char*)0x11000
 
 // unicorn hook
 void _exit(int status) {
