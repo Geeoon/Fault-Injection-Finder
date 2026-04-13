@@ -57,7 +57,7 @@ class FIEngine():
         if access == UC_MEM_WRITE:
             logging.info(f"IO write: {chr(value)}")
         elif access == UC_MEM_READ:
-            data = b'A'
+            data = b'\0'
             logging.info(f"IO read, sending {data}")
             mu.mem_write(RW_ADDRESS, data)
         return True

@@ -6,6 +6,6 @@ logging.basicConfig(
 
 from FaultInjectionFinder import FaultInjectionFinder
 
-finder = FaultInjectionFinder('./binaries/exit.bin')
+finder = FaultInjectionFinder('./binaries/hello_world.bin')
 
 finder.find_faults()

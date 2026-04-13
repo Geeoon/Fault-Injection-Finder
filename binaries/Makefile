@@ -13,7 +13,7 @@ LDFLAGS += -T linkerfile.ld
 
 .PRECIOUS: %.s %.elf
 
-all: infinite_loop.bin password.bin exit.bin
+all: infinite_loop.bin password.bin exit.bin hello_world.bin
 
 stubs.s: stubs/stubs.c
 	$(CC) $(CFLAGS) -S $^ -o $@

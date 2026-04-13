@@ -16,4 +16,4 @@ class FaultInjectionFinder():
             raise e
 
     def find_faults(self):
-        self.engine.run(max_iter=1000)  # test run with no faults
+        self.engine.run(max_iter=100000)  # test run with no faults
