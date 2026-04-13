@@ -55,7 +55,7 @@ class FIEngine():
 
     def _rw_hook(self, mu, access, address, size, value, user_data) -> bool:
         if access == UC_MEM_WRITE:
-            logging.info(f"IO write: {chr(value)}")
+            logging.info(f"IO write: {value.to_bytes(1)}")
         elif access == UC_MEM_READ:
             data = b'\0'
             logging.info(f"IO read, sending {data}")
