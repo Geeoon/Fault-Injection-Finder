@@ -21,7 +21,7 @@ class FaultInjectionFinder():
         If the end of the program has both R0 set to 500 AND R4 set to 350, then it will be considered a successful fault.
         The values in the other registers will be ignored.
         """
-        if not expected_output and not expected_exit and not expected_regs:
+        if not expected_output and expected_exit is None and not expected_regs:
             raise Exception("At least one of the expected values needs to be set")
         self.expected_output = expected_output
         self.expected_exit = expected_exit
@@ -36,7 +36,7 @@ class FaultInjectionFinder():
     def find_faults(self):
         successes = []
         for i in range(len(self.engine.binary) // 4):
-            skipped_instruction, res_output, res_exit, res_regs = self.engine.run(i, max_iter=100000)
+            skipped_instruction, res_output, res_exit, res_regs = self.engine.run(i, max_iter=1000000)
             if self.expected_output and self.expected_output == res_output: 
                 successes.append((i, skipped_instruction, res_output, res_exit, res_regs))
             elif self.expected_exit and self.expected_exit == res_exit: 

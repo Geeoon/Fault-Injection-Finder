@@ -63,8 +63,8 @@ class FIEngine():
             self.output += value.to_bytes(1)
         elif access == UC_MEM_READ:
             if self.input:
-                data = self.input[0]
-                self.input[1:]
+                data = (self.input[0]).to_bytes(1)
+                self.input = self.input[1:]
             else:
                 data = b'\0'
             logging.debug(f"IO read, sending {data}")
