@@ -3,3 +3,4 @@
 *.s
 !startup.s
 !source/pc_test/main.s
+**.o
