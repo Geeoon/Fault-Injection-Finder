@@ -26,7 +26,7 @@ class FIEngine():
     The main driver for running binaries with faults.
     Only supports ARM64 (AArch64) binaries.
     """
-    def __init__(self, binary: bytes, input: bytes, BINARY_ADDRESS: int=0x0, BINARY_MAX_SIZE: int=0x10000, RAM_ADDRESS: int=0x2000000, RAM_SIZE: int=0x10000, EXIT_ADDRESS: int=0x3000000, RW_ADDRESS: int=0x3001000, FAULT_ADDRESS: int=0x3002000):
+    def __init__(self, binary: bytes, input: bytes, BINARY_ADDRESS: int=0x1000000, BINARY_MAX_SIZE: int=0x10000, RAM_ADDRESS: int=0x2000000, RAM_SIZE: int=0x10000, EXIT_ADDRESS: int=0x3000000, RW_ADDRESS: int=0x3001000, FAULT_ADDRESS: int=0x3002000):
         """
         :param binary: the binary to examine
         """
@@ -151,6 +151,7 @@ class FIEngine():
         # used for keeping track of whether our input influences the PC
         trigger = False
         self._pc_control = False
+        self._old_pc = None
         try:
             try:
                 self.mu.emu_start(self.BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
@@ -162,6 +163,7 @@ class FIEngine():
                 trigger = True
         except InvalidFetch as e:
             logging.info(f"Emulator fetched invalid instruction.  Trying again with a different input.")
+            self._old_pc = self.mu.reg_read(PC)
             self._init_emulator()
             # flip all bits for normal input
             self._mutated_input = self._flip_bits(self.input)
@@ -180,6 +182,9 @@ class FIEngine():
         final_registers = {}
         for i in range(len(R)):
             final_registers[f'R{i}'] = self.mu.reg_read(R[i])
+        final_registers['PC'] = self.mu.reg_read(PC)
+        if self._pc_control:
+            final_registers['Old PC'] = self._old_pc
         return decoded, self.output, self.exit_code, final_registers, self._pc_control, trigger
 
         # print registers

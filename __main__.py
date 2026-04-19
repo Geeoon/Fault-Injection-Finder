@@ -35,9 +35,9 @@ for fault in finder.find_faults():
     print(f"  {output!r}")
 
     print("\nRegisters:")
-    for reg in sorted(regs.keys(), key=lambda x: int(x[1:])):
+    for reg in regs.keys():
         val = regs[reg]
-        print(f"  {reg:>4}: 0x{val:08x} ({val})")
+        print(f"  {reg:>8}: 0x{val:08x} ({val})")
 
     if trigger:
         print("Fault was manually triggered")
