@@ -3,8 +3,9 @@
 
 #define EXIT_ADDR (int*)0x3000000
 #define RW_ADDR (char*)0x3001000
+#define FAULT_ADDR (int*)0x3002000
 
-// unicorn hook
+// unicorn hooks
 void _exit(int status) {
     *EXIT_ADDR = status;
     while(1);
@@ -18,6 +19,11 @@ int _read(int fd, char *buf, int len) {
 int _write(int fd, char *buf, int len) {
     for (int i = 0; i < len; i++) *RW_ADDR = buf[i];
     return len;
+}
+
+// notify unicorn of a successful fault
+void _successful_fault(void) {
+    *FAULT_ADDR = 0;
 }
 
 void _fini(void) {}

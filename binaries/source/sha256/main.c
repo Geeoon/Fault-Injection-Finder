@@ -3,6 +3,7 @@
 
 extern int _read(int fd, char* buf, int len);
 extern int _write(int fd, char* buf, int len);
+extern void _successful_fault(void);
 
 int main() {
     char input[16];
@@ -15,6 +16,7 @@ int main() {
 
     if (memcmp(test_hash, real_hash, 32) == 0) {
         _write(0, "access granted.", strlen("access granted."));
+        _successful_fault();
         return 0;
     }
     _write(0, "access denied.", strlen("access denied."));

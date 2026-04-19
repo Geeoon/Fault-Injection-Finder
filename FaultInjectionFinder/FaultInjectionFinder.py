@@ -31,17 +31,19 @@ class FaultInjectionFinder():
             logging.critical(f"Failed to load the binary into the FIEngine: {str(e)}")
             raise e
 
-    def find_faults(self):
+    def find_faults(self) -> list:
         logging.info("Searching for faults...")
         successes = []
         for i in range(len(self.engine.binary) // 4):
-            skipped_instruction, res_output, res_exit, res_regs, pc_control = self.engine.run(i, max_iter=100000)
-            if pc_control:
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control))
+            skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger = self.engine.run(i, max_iter=100000)
+            if trigger:
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger))
+            elif pc_control:
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger))
             elif self.expected_output and self.expected_output in res_output: 
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control))
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger))
             elif self.expected_exit is not None and self.expected_exit == res_exit: 
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control))
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger))
             elif self.expected_regs:  # todo: finish this
                 pass
                 # successes.append((skipped_instruction, res_output, res_exit, res_regs))

@@ -9,7 +9,7 @@ from FaultInjectionFinder import FaultInjectionFinder
 # finder = FaultInjectionFinder('./binaries/infinite_loop.bin', input=b'whatever', expected_output=b'escaped the loop')
 # finder = FaultInjectionFinder('./binaries/password.bin', input=b'a' * 99, expected_output=b'access granted.', expected_exit=0)
 # finder = FaultInjectionFinder('./binaries/pc_test.bin', input=b'12345678')
-finder = FaultInjectionFinder('./binaries/sha256.bin', input=b'1' * 16, expected_output=b'access granted.')
+finder = FaultInjectionFinder('./binaries/sha256.bin', input=b'1' * 16)
 
 print(
 "▄▖    ▜ ▗   ▄▖   ▘    ▗ ▘      ▄▖▘   ▌   \n" +
@@ -19,7 +19,7 @@ print(
 )
 
 for fault in finder.find_faults():
-    i, insns, output, exit_code, regs, pc_control = fault
+    i, insns, output, exit_code, regs, pc_control, trigger = fault
 
     print("=" * 50)
     print(f"Fault @ instruction index: {i}")
@@ -38,6 +38,9 @@ for fault in finder.find_faults():
     for reg in sorted(regs.keys(), key=lambda x: int(x[1:])):
         val = regs[reg]
         print(f"  {reg:>4}: 0x{val:08x} ({val})")
+
+    if trigger:
+        print("Fault was manually triggered")
 
     if pc_control:
         print("!" * 10)

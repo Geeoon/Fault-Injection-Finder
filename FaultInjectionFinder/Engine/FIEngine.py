@@ -15,12 +15,18 @@ class InvalidFetch(Exception):
     """
     pass
 
+class FaultDetected(Exception):
+    """
+    Exception raised when the fault detection is tripped
+    """
+    pass
+
 class FIEngine():
     """
     The main driver for running binaries with faults.
     Only supports ARM64 (AArch64) binaries.
     """
-    def __init__(self, binary: bytes, input: bytes, BINARY_ADDRESS: int=0x0, BINARY_MAX_SIZE: int=0x10000, RAM_ADDRESS: int=0x2000000, RAM_SIZE: int=0x10000, EXIT_ADDRESS: int=0x3000000, RW_ADDRESS: int=0x3001000):
+    def __init__(self, binary: bytes, input: bytes, BINARY_ADDRESS: int=0x0, BINARY_MAX_SIZE: int=0x10000, RAM_ADDRESS: int=0x2000000, RAM_SIZE: int=0x10000, EXIT_ADDRESS: int=0x3000000, RW_ADDRESS: int=0x3001000, FAULT_ADDRESS: int=0x3002000):
         """
         :param binary: the binary to examine
         """
@@ -34,6 +40,7 @@ class FIEngine():
         self.RAM_SIZE = RAM_SIZE
         self.EXIT_ADDRESS = EXIT_ADDRESS
         self.RW_ADDRESS = RW_ADDRESS
+        self.FAULT_ADDRESS = FAULT_ADDRESS
 
     def _init_emulator(self):
         # reset emulator
@@ -56,8 +63,10 @@ class FIEngine():
         self.mu.mem_map(self.RAM_ADDRESS, self.RAM_SIZE, UC_PROT_READ | UC_PROT_WRITE)  # map RAM as read and write only  (maybe add execute for fun?)
         self.mu.mem_map(self.EXIT_ADDRESS, 0x1000, UC_PROT_WRITE)  # add exit hook to memory map
         self.mu.mem_map(self.RW_ADDRESS, 0x1000, UC_PROT_READ | UC_PROT_WRITE)  # add IO hook to memory map
+        self.mu.mem_map(self.FAULT_ADDRESS, 0x1000, UC_PROT_WRITE)  # fault hook to memory map
         self.mu.hook_add(UC_HOOK_MEM_WRITE, self._exit_hook, begin=self.EXIT_ADDRESS, end=self.EXIT_ADDRESS + 0x4)  # add hook for exit
         self.mu.hook_add(UC_HOOK_MEM_READ | UC_HOOK_MEM_WRITE, self._rw_hook, begin=self.RW_ADDRESS, end=self.RW_ADDRESS)  # add hook for IO read/write
+        self.mu.hook_add(UC_HOOK_MEM_WRITE, self._fault_hook, begin=self.FAULT_ADDRESS, end=self.FAULT_ADDRESS + 0x4)  # add hook for fault detection
         self.mu.hook_add(UC_HOOK_MEM_INVALID, self._mem_invalid_hook)
 
     def _to_signed_32(self, unsigned_val) -> int:
@@ -93,6 +102,9 @@ class FIEngine():
             logging.debug(f"IO read, sending {data}")
             mu.mem_write(self.RW_ADDRESS, data)
         return True
+    
+    def _fault_hook(self, mu, access, address, size, value, user_data) -> bool:
+        raise FaultDetected()
     
     def _mem_invalid_hook(self, mu, access, address, size, value, user_data) -> bool:
         if access == UC_MEM_FETCH_UNMAPPED:
@@ -137,6 +149,7 @@ class FIEngine():
         self.mu.mem_write(self.BINARY_ADDRESS, bytes(code_arr))  # write our binary to memory
 
         # used for keeping track of whether our input influences the PC
+        trigger = False
         self._pc_control = False
         try:
             try:
@@ -145,6 +158,8 @@ class FIEngine():
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     raise InvalidFetch
                 logging.error(f"Emulator crashed (likely just due to the binary being corrupted): {str(e)}")
+            except FaultDetected as e:
+                trigger = True
         except InvalidFetch as e:
             logging.info(f"Emulator fetched invalid instruction.  Trying again with a different input.")
             self._init_emulator()
@@ -165,7 +180,7 @@ class FIEngine():
         final_registers = {}
         for i in range(len(R)):
             final_registers[f'R{i}'] = self.mu.reg_read(R[i])
-        return decoded, self.output, self.exit_code, final_registers, self._pc_control
+        return decoded, self.output, self.exit_code, final_registers, self._pc_control, trigger
 
         # print registers
         # logging.info("Emulation done. Below is the CPU context")
