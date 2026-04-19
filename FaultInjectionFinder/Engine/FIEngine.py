@@ -3,21 +3,11 @@ import logging
 from unicorn import *
 from capstone import *
 
-
 R = [getattr(arm_const, f"UC_ARM_REG_R{i}") for i in range(13)]
 PC = arm_const.UC_ARM_REG_PC
 LR = arm_const.UC_ARM_REG_LR
 SP = arm_const.UC_ARM_REG_SP
 NOP = b"\x00\xf0\x20\xe3"
-
-BINARY_ADDRESS = 0x0  # start address of the binary in our emulator's memory
-BINARY_MAX_SIZE = 0x10000  # allow binaries up to 64KiB
-
-RAM_ADDRESS = 0x2000000  # start address of the RAM avaible to the program
-RAM_SIZE = 0x10000  # allocate 64KiB for RAM
-
-EXIT_ADDRESS = 0x3000000  # special address for hooking into exits
-RW_ADDRESS = 0x3001000  # special address for hooking into IO read and write operations
 
 class InvalidFetch(Exception):
     """
@@ -30,7 +20,7 @@ class FIEngine():
     The main driver for running binaries with faults.
     Only supports ARM64 (AArch64) binaries.
     """
-    def __init__(self, binary: bytes, input: bytes):
+    def __init__(self, binary: bytes, input: bytes, BINARY_ADDRESS: int=0x0, BINARY_MAX_SIZE: int=0x10000, RAM_ADDRESS: int=0x2000000, RAM_SIZE: int=0x10000, EXIT_ADDRESS: int=0x3000000, RW_ADDRESS: int=0x3001000):
         """
         :param binary: the binary to examine
         """
@@ -38,6 +28,12 @@ class FIEngine():
         self.binary = binary
         self.input = input
         self._mutated_input = input
+        self.BINARY_ADDRESS = BINARY_ADDRESS
+        self.BINARY_MAX_SIZE = BINARY_MAX_SIZE
+        self.RAM_ADDRESS = RAM_ADDRESS
+        self.RAM_SIZE = RAM_SIZE
+        self.EXIT_ADDRESS = EXIT_ADDRESS
+        self.RW_ADDRESS = RW_ADDRESS
 
     def _init_emulator(self):
         # reset emulator
@@ -46,7 +42,7 @@ class FIEngine():
         self._mutated_input = self.input
         self._invalid_fetch = None
         self._create_unicorn()
-        self.mu.reg_write(SP, RAM_ADDRESS + RAM_SIZE)  # set the stack pointer to the top of our RAM
+        self.mu.reg_write(SP, self.RAM_ADDRESS + self.RAM_SIZE)  # set the stack pointer to the top of our RAM
         self.mu.reg_write(PC, 0x0)  # reset PC to start of binary
         self.mu.reg_write(LR, 0x0)  # reset LR
         # reset all general purpose registers
@@ -56,12 +52,12 @@ class FIEngine():
     def _create_unicorn(self):
         # initalize emulator
         self.mu = Uc(UC_ARCH_ARM, UC_MODE_ARM)
-        self.mu.mem_map(BINARY_ADDRESS, BINARY_MAX_SIZE, UC_PROT_READ | UC_PROT_EXEC)  # map the binary as read and execute only
-        self.mu.mem_map(RAM_ADDRESS, RAM_SIZE, UC_PROT_READ | UC_PROT_WRITE)  # map RAM as read and write only  (maybe add execute for fun?)
-        self.mu.mem_map(EXIT_ADDRESS, 0x1000, UC_PROT_WRITE)  # add exit hook to memory map
-        self.mu.mem_map(RW_ADDRESS, 0x1000, UC_PROT_READ | UC_PROT_WRITE)  # add IO hook to memory map
-        self.mu.hook_add(UC_HOOK_MEM_WRITE, self._exit_hook, begin=EXIT_ADDRESS, end=EXIT_ADDRESS + 0x4)  # add hook for exit
-        self.mu.hook_add(UC_HOOK_MEM_READ | UC_HOOK_MEM_WRITE, self._rw_hook, begin=RW_ADDRESS, end=RW_ADDRESS)  # add hook for IO read/write
+        self.mu.mem_map(self.BINARY_ADDRESS, self.BINARY_MAX_SIZE, UC_PROT_READ | UC_PROT_EXEC)  # map the binary as read and execute only
+        self.mu.mem_map(self.RAM_ADDRESS, self.RAM_SIZE, UC_PROT_READ | UC_PROT_WRITE)  # map RAM as read and write only  (maybe add execute for fun?)
+        self.mu.mem_map(self.EXIT_ADDRESS, 0x1000, UC_PROT_WRITE)  # add exit hook to memory map
+        self.mu.mem_map(self.RW_ADDRESS, 0x1000, UC_PROT_READ | UC_PROT_WRITE)  # add IO hook to memory map
+        self.mu.hook_add(UC_HOOK_MEM_WRITE, self._exit_hook, begin=self.EXIT_ADDRESS, end=self.EXIT_ADDRESS + 0x4)  # add hook for exit
+        self.mu.hook_add(UC_HOOK_MEM_READ | UC_HOOK_MEM_WRITE, self._rw_hook, begin=self.RW_ADDRESS, end=self.RW_ADDRESS)  # add hook for IO read/write
         self.mu.hook_add(UC_HOOK_MEM_INVALID, self._mem_invalid_hook)
 
     def _to_signed_32(self, unsigned_val) -> int:
@@ -73,7 +69,7 @@ class FIEngine():
     def _flip_bits(self, input: bytes) -> bytes:
         out = b''
         for byte in input:
-            out += out + byte ^ 0xFF
+            out += bytes(byte ^ 0xFF)
         return out
     
     def _exit_hook(self, mu, access, address, size, value, user_data) -> bool:
@@ -92,9 +88,10 @@ class FIEngine():
                 data = (self._mutated_input[0]).to_bytes(1)
                 self._mutated_input = self._mutated_input[1:]
             else:
+                logging.debug("Ran out of input, sending null bytes")
                 data = b'\0'
             logging.debug(f"IO read, sending {data}")
-            mu.mem_write(RW_ADDRESS, data)
+            mu.mem_write(self.RW_ADDRESS, data)
         return True
     
     def _mem_invalid_hook(self, mu, access, address, size, value, user_data) -> bool:
@@ -108,7 +105,7 @@ class FIEngine():
                 # has our input influenced the PC?
                 self._pc_control = self._invalid_fetch == address
             self.mu.emu_stop()
-            raise InvalidFetch()
+            return False
         elif access == UC_MEM_READ_UNMAPPED:
             logging.warning(f"Read from unmapped address: {hex(address)}")
         elif access == UC_MEM_WRITE_UNMAPPED:
@@ -137,14 +134,17 @@ class FIEngine():
             code_arr[byte_offset:byte_offset + 4] = NOP
 
         # write the binary to memory
-        self.mu.mem_write(BINARY_ADDRESS, bytes(code_arr))  # write our binary to memory
+        self.mu.mem_write(self.BINARY_ADDRESS, bytes(code_arr))  # write our binary to memory
 
         # used for keeping track of whether our input influences the PC
         self._pc_control = False
         try:
-            self.mu.emu_start(BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
-        except UcError as e:
-            logging.error(f"Emulator crashed (likely just due to the binary being corrupted): {str(e)}")
+            try:
+                self.mu.emu_start(self.BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
+            except UcError as e:
+                if e.errno == UC_ERR_FETCH_UNMAPPED:
+                    raise InvalidFetch
+                logging.error(f"Emulator crashed (likely just due to the binary being corrupted): {str(e)}")
         except InvalidFetch as e:
             logging.info(f"Emulator fetched invalid instruction.  Trying again with a different input.")
             self._init_emulator()
@@ -152,9 +152,12 @@ class FIEngine():
             self._mutated_input = self._flip_bits(self.input)
             self._pc_control = True
             try:
-                self.mu.emu_start(BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
-            except InvalidFetch as e:
-                pass
+                self.mu.emu_start(self.BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
+            except UcError as e:
+                if e.errno == UC_ERR_FETCH_UNMAPPED:
+                    pass
+                logging.error(f"Emulator crashed (likely just due to the binary being corrupted): {str(e)}")
+                
         if self.exit_code is None:
             logging.debug("Emulation reached max iterations instead (i.e., the program did not exit in time)")
 
