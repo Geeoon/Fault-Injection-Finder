@@ -1,9 +1,9 @@
 import logging
 
-from FaultInjectionFinder.Engine import FIEngine
+from FaultInjectionFinder.Engine import FIEngine, PCSolver
 
 class FaultInjectionFinder():
-    def __init__(self, binary_path: str, input: bytes, expected_output: bytes=None, expected_exit: int=None, expected_regs: dict=None):
+    def __init__(self, binary_path: str, input: bytes, expected_output: bytes=None, expected_exit: int=None, expected_regs: dict=None, desired_pc: int=None):
         """
         Initializer for the FaultInjetionFinder
         :param binary_path: the path to the binary to examine
@@ -11,6 +11,7 @@ class FaultInjectionFinder():
         :param expected_output: the expected output of the program for a successful fault
         :param expected_exit: the expected exit code of the program for a successful fault
         :param expected_regs: the expected registers of the program for a successful fault
+        :param desired_pc: the program counter we should try to set, if we have control
         
         If any of the expected value match, it is considered a success.  For expected_regs, only give the registers that are expected.
         Example:
@@ -30,15 +31,19 @@ class FaultInjectionFinder():
         except Exception as e:
             logging.critical(f"Failed to load the binary into the FIEngine: {str(e)}")
             raise e
+        self.desired_pc = desired_pc
+        self.input_len = len(input)
 
     def find_faults(self) -> list:
         logging.info("Searching for faults...")
         successes = []
+        pc_controls = []
         for i in range(len(self.engine.binary) // 4):
             skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger = self.engine.run(i, max_iter=100000)
             if trigger:
                 successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger))
             elif pc_control:
+                pc_controls.append(i)
                 successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger))
             elif self.expected_output and self.expected_output in res_output: 
                 successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger))
@@ -48,6 +53,12 @@ class FaultInjectionFinder():
                 pass
                 # successes.append((skipped_instruction, res_output, res_exit, res_regs))
             
+        # try to solve pc control
+        if self.desired_pc is not None:
+            for pc_control_index in pc_controls:
+                binary, _ = self.engine.skip_instruction(bytearray(self.engine.binary), pc_control_index)
+                solver = PCSolver(binary, self.input_len, self.desired_pc)
+                print(solver.run())
         logging.info("Done searching for faults.")
         return successes
                 

@@ -1,22 +1,5 @@
 import logging
 
-from unicorn import *
-from capstone import *
-
-R = [getattr(arm_const, f"UC_ARM_REG_R{i}") for i in range(13)]
-PC = arm_const.UC_ARM_REG_PC
-LR = arm_const.UC_ARM_REG_LR
-SP = arm_const.UC_ARM_REG_SP
-NOP = b"\x00\xf0\x20\xe3"
-
-DEFAULT_BINARY_ADDRESS = 0x1000000
-DEFAULT_BINARY_MAX_SIZE = 0x10000
-DEFAULT_RAM_ADDRESS = 0x2000000
-DEFAULT_RAM_SIZE = 0x10000
-DEFAULT_EXIT_ADDRESS = 0x3000000
-DEFAULT_RW_ADDRESS = 0x3001000
-DEFAULT_FAULT_ADDRESS = 0x3002000
-
 class InvalidFetch(Exception):
     """
     Exception raised for invalid fetches
@@ -34,25 +17,9 @@ class FIEngine():
     The main driver for running binaries with faults.
     Only supports ARM64 (AArch64) binaries.
     """
-    def __init__(self,
-                 binary: bytes,
-                 input: bytes,
-                 BINARY_ADDRESS: int=DEFAULT_BINARY_ADDRESS,
-                 BINARY_MAX_SIZE: int=DEFAULT_BINARY_MAX_SIZE,
-                 RAM_ADDRESS: int=DEFAULT_RAM_ADDRESS,
-                 RAM_SIZE: int=DEFAULT_RAM_SIZE,
-                 EXIT_ADDRESS: int=DEFAULT_EXIT_ADDRESS,
-                 RW_ADDRESS: int=DEFAULT_RW_ADDRESS,
-                 FAULT_ADDRESS: int=DEFAULT_FAULT_ADDRESS):
+    def __init__(self, binary: bytes, input: bytes, BINARY_ADDRESS: int=0x1000000, BINARY_MAX_SIZE: int=0x10000, RAM_ADDRESS: int=0x2000000, RAM_SIZE: int=0x10000, EXIT_ADDRESS: int=0x3000000, RW_ADDRESS: int=0x3001000, FAULT_ADDRESS: int=0x3002000):
         """
         :param binary: the binary to examine
-        :param BINARY_ADDRESS: the address where the binary should be loaded
-        :param BINARY_MAX_SIZE: the size of flash allocated for the binary
-        :param RAM_ADDRESS: the starting address of the RAM
-        :param RAM_SIZE: the size of available RAM for emulation
-        :param EXIT_ADDRESS: the address that should be written for an exit
-        :param RW_ADDRESS: the IO address
-        :param FAULT_ADDRESS: the address that should be written to in the event of a successful fault
         """
         self.md = Cs(CS_ARCH_ARM, CS_MODE_ARM)  # initialize capstone disassembler
         self.binary = binary
@@ -146,17 +113,6 @@ class FIEngine():
             logging.warning(f"Read from unmapped address: {hex(address)}")
         elif access == UC_MEM_WRITE_UNMAPPED:
             logging.warning(f"Write to unmapped address: {hex(address)}")
-
-    def skip_instruction(self, binary: bytearray, index: int) -> tuple[bytes, list]:
-        byte_offset = index * 4
-        decoded = list(self.md.disasm(binary[byte_offset:byte_offset + 4], 0x0))
-        if not decoded:
-            logging.error("Could not decode the instruction to be skipped")
-        else:
-            skipped_instruction = decoded[0]
-            logging.debug(f"Injecting a fault at {index}, replacing {skipped_instruction.mnemonic} {skipped_instruction.op_str} with NOP")
-        binary[byte_offset:byte_offset + 4] = NOP
-        return bytes(binary), decoded
     
     def run(self, fault_index: int=None, max_iter: int=1000):
         """
@@ -168,14 +124,20 @@ class FIEngine():
         self._init_emulator()
 
         # convert to byte array so we can mutate it
-        modified_code = self.binary
-        decoded = None
+        code_arr = bytearray(self.binary)
         # add a NOP fault, if given
         if fault_index is not None:
-            modified_code, decoded = self.skip_instruction(bytearray(self.binary), fault_index)
+            byte_offset = fault_index * 4
+            decoded = list(self.md.disasm(code_arr[byte_offset:byte_offset + 4], 0x0))
+            if not decoded:
+                logging.error("Could not decode the instruction to be skipped")
+            else:
+                skipped_instruction = decoded[0]
+                logging.debug(f"Injecting a fault at {fault_index}, replacing {skipped_instruction.mnemonic} {skipped_instruction.op_str} with NOP")
+            code_arr[byte_offset:byte_offset + 4] = NOP
 
         # write the binary to memory
-        self.mu.mem_write(self.BINARY_ADDRESS, modified_code)  # write our binary to memory
+        self.mu.mem_write(self.BINARY_ADDRESS, bytes(code_arr))  # write our binary to memory
 
         # used for keeping track of whether our input influences the PC
         trigger = False
