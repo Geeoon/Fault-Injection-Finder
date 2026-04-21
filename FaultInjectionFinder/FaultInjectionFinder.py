@@ -41,24 +41,20 @@ class FaultInjectionFinder():
         for i in range(len(self.engine.binary) // 4):
             skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger = self.engine.run(i, max_iter=100000)
             if trigger:
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger))
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, None))
             elif pc_control:
-                pc_controls.append(i)
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger))
+                # solve for PC to see if we can
+                binary, _ = self.engine.skip_instruction(bytearray(self.engine.binary), i)
+                solver = PCSolver(binary, self.input_len, self.desired_pc)
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, solver.run()))
             elif self.expected_output and self.expected_output in res_output: 
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger))
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, None))
             elif self.expected_exit is not None and self.expected_exit == res_exit: 
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger))
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, None))
             elif self.expected_regs:  # todo: finish this
                 pass
                 # successes.append((skipped_instruction, res_output, res_exit, res_regs))
             
-        # try to solve pc control
-        if self.desired_pc is not None:
-            for pc_control_index in pc_controls:
-                binary, _ = self.engine.skip_instruction(bytearray(self.engine.binary), pc_control_index)
-                solver = PCSolver(binary, self.input_len, self.desired_pc)
-                print(solver.run())
         logging.info("Done searching for faults.")
         return successes
                 

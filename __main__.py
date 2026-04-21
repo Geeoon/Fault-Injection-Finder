@@ -5,12 +5,12 @@ logging.basicConfig(
 )
 
 from FaultInjectionFinder import FaultInjectionFinder
+from FaultInjectionFinder.Engine import PCSolver
 
 # finder = FaultInjectionFinder('./binaries/infinite_loop.bin', input=b'whatever', expected_output=b'escaped the loop')
 # finder = FaultInjectionFinder('./binaries/password.bin', input=b'a' * 99, expected_output=b'access granted.', expected_exit=0)
-finder = FaultInjectionFinder('./binaries/pc_test.bin', input=b'0' * 4)
-
-# finder = FaultInjectionFinder('./binaries/sha256.bin', input=b'1' * 16, desired_pc=0)
+# finder = FaultInjectionFinder('./binaries/pc_test.bin', input=b'0' * 4, desired_pc=0x12345678)
+finder = FaultInjectionFinder('./binaries/sha256.bin', input=b'1' * 16, desired_pc=0)
 
 print(
 "▄▖    ▜ ▗   ▄▖   ▘    ▗ ▘      ▄▖▘   ▌   \n" +
@@ -20,7 +20,7 @@ print(
 )
 
 for fault in finder.find_faults():
-    i, insns, output, exit_code, regs, pc_control, trigger = fault
+    i, insns, output, exit_code, regs, pc_control, trigger, input_to_pc = fault
 
     print("=" * 50)
     print(f"Fault @ instruction index: {i}")
@@ -46,6 +46,8 @@ for fault in finder.find_faults():
     if pc_control:
         print("!" * 10)
         print("Got control of the PC")
+        if input_to_pc:
+            print(f"By giving an input of {input_to_pc}, we get the desired PC value of {finder.desired_pc}")
         print("!" * 10)
 
     print()

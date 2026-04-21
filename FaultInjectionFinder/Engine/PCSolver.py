@@ -43,7 +43,10 @@ class PCSolver():
             start_offset=0,
             load_address=BINARY_ADDRESS
         )
-        self.state = self.project.factory.blank_state(addr=BINARY_ADDRESS)
+        self.state = self.project.factory.blank_state(
+            addr=BINARY_ADDRESS,
+            add_options={angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS}
+        )
         self.state.regs.sp = RAM_ADDRESS + RAM_SIZE
         self.state.memory.store(RAM_ADDRESS, b'\x00' * RAM_SIZE)  # zero out RAM
         self.input_size = input_size
@@ -98,21 +101,41 @@ class PCSolver():
         else:
             return state.solver.eval(ip) == self.desired_pc
 
-    def run(self) -> bytes | None:
+    def _step_func(self, simgr):
+        if simgr.active:
+            logging.info(f"Step {self._steps}, active: {len(simgr.active)}, constraints: {len(simgr.active[0].solver.constraints)}")
+        self._steps += 1
+        return simgr
+
+    def run(self, max_iter: int=1000) -> bytes | None:
         """
         Run the solver.
         """
-        simgr = self.project.factory.simgr(self.state)
-
-        simgr.explore(find=self._pc_is_target)
+        simgr = self.project.factory.simgr(
+            self.state,
+            save_unconstrained=True,
+            save_unsat=True
+        )
+        # simple max iterations
+        simgr.use_technique(angr.exploration_techniques.LengthLimiter(max_length=max_iter))
+        # this severely limits the number of states that will be explored
+        simgr.use_technique(angr.exploration_techniques.LoopSeer(bound=64))
+        self._steps = 0
+        self._max_iter = max_iter
+        simgr.explore(find=self._pc_is_target, num_find=1, step_func=self._step_func)
         
         if simgr.found:
-            found_state = simgr.found[0]
-            if found_state.ip.symbolic:
-                found_state.add_constraints(found_state.ip == self.desired_pc)
-            result = []
-            for sym_byte in self.symbolic_inputs:
-                result.append(found_state.solver.eval(sym_byte))
-            return bytes(result)
+            candidates = simgr.found
+        elif simgr.unconstrained:
+            candidates = simgr.unconstrained
         else:
             return None
+        for state in candidates:
+            if state.ip.symbolic:
+                state.add_constraints(state.ip == self.desired_pc)
+            if state.solver.satisfiable():
+                result = []
+                for sym_byte in self.symbolic_inputs:
+                    result.append(state.solver.eval(sym_byte))
+                return bytes(result)
+        return None
