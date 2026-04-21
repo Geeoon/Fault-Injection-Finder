@@ -69,7 +69,7 @@ class PCSolver():
     def _io_read_hook(self, state):
         if self.input_size:
             # give a symbollic byte
-            sym_inp = self.state.solver.BVS('io_read', 8)  # single symbolic input
+            sym_inp = claripy.BVS('io_read', 8)  # single symbolic input
             self.symbolic_inputs.append(sym_inp)
             state.memory.store(
                 self.RW_ADDRESS,
@@ -81,7 +81,7 @@ class PCSolver():
             # send a null byte
             state.memory.store(
                 self.RW_ADDRESS,
-                self.state.solver.BVV(0x0, 8),  # single null byte
+                claripy.BVV(0x0, 8),  # single null byte
                 endness=self.project.arch.memory_endness
             )
 

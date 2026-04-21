@@ -8,8 +8,8 @@ from FaultInjectionFinder import FaultInjectionFinder
 
 # finder = FaultInjectionFinder('./binaries/infinite_loop.bin', input=b'whatever', expected_output=b'escaped the loop')
 # finder = FaultInjectionFinder('./binaries/password.bin', input=b'a' * 99, expected_output=b'access granted.', expected_exit=0)
-# finder = FaultInjectionFinder('./binaries/pc_test.bin', input=b'12345678')
-finder = FaultInjectionFinder('./binaries/sha256.bin', input=b'1' * 16, desired_pc=0)
+finder = FaultInjectionFinder('./binaries/pc_test.bin', input=b'0' * 4, desired_pc=0x1000)
+# finder = FaultInjectionFinder('./binaries/sha256.bin', input=b'1' * 16, desired_pc=0)
 
 print(
 "▄▖    ▜ ▗   ▄▖   ▘    ▗ ▘      ▄▖▘   ▌   \n" +
