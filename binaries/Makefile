@@ -18,6 +18,9 @@ all: infinite_loop.bin password.bin exit.bin hello_world.bin echo.bin pc_test.bi
 stubs.s: stubs/stubs.c
 	$(CC) $(CFLAGS) -S $^ -o $@
 
+pwned.s: shellcode/pwned.c
+	$(CC) $(CFLAGS) -S $^ -o $@
+
 %.s: source/%/main.c
 	$(CC) $(CFLAGS) -S $^ -o $@
 
@@ -36,7 +39,7 @@ extra_objs = $(patsubst %.c,%.o,\
 TARGETS := infinite_loop password exit hello_world echo pc_test sha256 aes_ecb
 
 define TARGET_RULES
-$(1).elf: $(1).s stubs.s startup.s $(call extra_objs,$(1))
+$(1).elf: $(1).s stubs.s startup.s pwned.s $(call extra_objs,$(1))
 	$$(CC) $$(CFLAGS) $$^ $$(LDFLAGS) -o $$@
 endef
 
@@ -46,4 +49,4 @@ $(foreach t,$(TARGETS),$(eval $(call TARGET_RULES,$(t))))
 	$(OBJCOPY) -O binary $< $@
 
 clean:
-	rm -f infinite_loop.* password.* stubs.*
+	rm -f infinite_loop.* password.* stubs.* pwned.*

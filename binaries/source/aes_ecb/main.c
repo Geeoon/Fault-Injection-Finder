@@ -1,6 +1,7 @@
 #include "AES_256_ECB.h"
 
 extern int _read(int fd, char* buf, int len);
+extern void pwned(void);
 
 int main(void) {
     AES_CTX ctx;

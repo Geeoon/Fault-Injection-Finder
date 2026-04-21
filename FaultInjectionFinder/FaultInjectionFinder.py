@@ -37,9 +37,11 @@ class FaultInjectionFinder():
     def find_faults(self) -> list:
         logging.info("Searching for faults...")
         successes = []
-        pc_controls = []
         for i in range(len(self.engine.binary) // 4):
-            skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger = self.engine.run(i, max_iter=100000)
+            res = self.engine.run(i, max_iter=100000)
+            if not res:  # skip if it didn't even run
+                continue
+            skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger = res
             if trigger:
                 successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, None))
             elif pc_control:

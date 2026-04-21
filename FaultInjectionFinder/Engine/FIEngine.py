@@ -173,6 +173,8 @@ class FIEngine():
         # add a NOP fault, if given
         if fault_index is not None:
             modified_code, decoded = self.skip_instruction(bytearray(self.binary), fault_index)
+            if not decoded:
+                return None
 
         # write the binary to memory
         self.mu.mem_write(self.BINARY_ADDRESS, modified_code)  # write our binary to memory
