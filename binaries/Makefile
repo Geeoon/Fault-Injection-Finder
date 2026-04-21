@@ -1,7 +1,7 @@
 # CC=gcc
 CC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
-CFLAGS += -O0
+CFLAGS += -O2
 CFLAGS += -ffunction-sections
 CFLAGS += -fdata-sections
 LDFLAGS += -Wl,--gc-sections

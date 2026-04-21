@@ -10,7 +10,7 @@ from FaultInjectionFinder.Engine import PCSolver
 # finder = FaultInjectionFinder('./binaries/infinite_loop.bin', input=b'whatever', expected_output=b'escaped the loop')
 # finder = FaultInjectionFinder('./binaries/password.bin', input=b'a' * 99, expected_output=b'access granted.', expected_exit=0)
 # finder = FaultInjectionFinder('./binaries/pc_test.bin', input=b'0' * 4, desired_pc=0x12345678)
-finder = FaultInjectionFinder('./binaries/sha256.bin', input=b'1' * 16, desired_pc=0)
+finder = FaultInjectionFinder('./binaries/sha256.bin', input=b'1' * 16, desired_pc=0x12345678)
 
 print(
 "▄▖    ▜ ▗   ▄▖   ▘    ▗ ▘      ▄▖▘   ▌   \n" +
@@ -48,6 +48,8 @@ for fault in finder.find_faults():
         print("Got control of the PC")
         if input_to_pc:
             print(f"By giving an input of {input_to_pc}, we get the desired PC value of {finder.desired_pc}")
+        else:
+            print(f"Unable to find a suitable input to get the desired PC value")
         print("!" * 10)
 
     print()

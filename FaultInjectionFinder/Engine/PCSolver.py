@@ -45,7 +45,10 @@ class PCSolver():
         )
         self.state = self.project.factory.blank_state(
             addr=BINARY_ADDRESS,
-            add_options={angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS}
+            add_options={
+                angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS,
+                angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,
+            }
         )
         self.state.regs.sp = RAM_ADDRESS + RAM_SIZE
         self.state.memory.store(RAM_ADDRESS, b'\x00' * RAM_SIZE)  # zero out RAM
@@ -116,10 +119,12 @@ class PCSolver():
             save_unconstrained=True,
             save_unsat=True
         )
+        # veritesting, does not work with our setup due to internal angr weirdness
+        # simgr.use_technique(angr.exploration_techniques.veritesting.Veritesting())
         # simple max iterations
         simgr.use_technique(angr.exploration_techniques.LengthLimiter(max_length=max_iter))
         # this severely limits the number of states that will be explored
-        simgr.use_technique(angr.exploration_techniques.LoopSeer(bound=64))
+        simgr.use_technique(angr.exploration_techniques.LoopSeer(bound=32))
         self._steps = 0
         self._max_iter = max_iter
         simgr.explore(find=self._pc_is_target, num_find=1, step_func=self._step_func)
