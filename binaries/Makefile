@@ -13,7 +13,7 @@ LDFLAGS += -T linkerfile.ld
 
 .PRECIOUS: %.s %.elf
 
-all: infinite_loop.bin password.bin exit.bin hello_world.bin echo.bin pc_test.bin sha256.bin
+all: infinite_loop.bin password.bin exit.bin hello_world.bin echo.bin pc_test.bin sha256.bin aes_ecb.bin
 
 stubs.s: stubs/stubs.c
 	$(CC) $(CFLAGS) -S $^ -o $@
@@ -33,7 +33,7 @@ extra_objs = $(patsubst %.c,%.o,\
 				$(filter-out source/$(1)/main.c,\
 					$(wildcard source/$(1)/*.c)))
 
-TARGETS := infinite_loop password exit hello_world echo pc_test sha256
+TARGETS := infinite_loop password exit hello_world echo pc_test sha256 aes_ecb
 
 define TARGET_RULES
 $(1).elf: $(1).s stubs.s startup.s $(call extra_objs,$(1))
