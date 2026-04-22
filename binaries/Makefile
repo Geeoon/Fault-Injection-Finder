@@ -1,6 +1,7 @@
 # CC=gcc
 CC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
+# CFLAGS += -march=armv6-m -mthumb  # specific to ARM-Cortex-M0+, comment line for ARM32
 CFLAGS += -O2
 CFLAGS += -ffunction-sections
 CFLAGS += -fdata-sections
@@ -49,4 +50,8 @@ $(foreach t,$(TARGETS),$(eval $(call TARGET_RULES,$(t))))
 	$(OBJCOPY) -O binary $< $@
 
 clean:
-	rm -f infinite_loop.* password.* stubs.* pwned.*
+	rm -f $(addsuffix .bin,$(TARGETS)) \
+	      $(addsuffix .elf,$(TARGETS)) \
+	      $(addsuffix .s,$(TARGETS)) \
+	      stubs.s pwned.s \
+	      $(foreach t,$(TARGETS),$(wildcard source/$(t)/*.o))

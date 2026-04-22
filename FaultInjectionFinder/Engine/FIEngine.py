@@ -74,7 +74,7 @@ class FIEngine():
         self._invalid_fetch = None
         self._create_unicorn()
         self.mu.reg_write(SP, self.RAM_ADDRESS + self.RAM_SIZE)  # set the stack pointer to the top of our RAM
-        self.mu.reg_write(PC, 0x0)  # reset PC to start of binary
+        self.mu.reg_write(PC, self.BINARY_ADDRESS)  # reset PC to start of binary.  Note: add `| 1`` for thumb
         self.mu.reg_write(LR, 0x0)  # reset LR
         # reset all general purpose registers
         for reg in R:
