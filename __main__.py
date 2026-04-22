@@ -49,7 +49,7 @@ for fault in finder.find_faults():
         print("Got control of the PC")
         if input_to_pc:
             print(f"By giving an input of {input_to_pc}, we get the desired PC value of {finder.desired_pc}")
-        else:
+        elif finder.desired_pc:
             print(f"Unable to find a suitable input to get the desired PC value")
         print("!" * 10)
 

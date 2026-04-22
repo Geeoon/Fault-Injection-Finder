@@ -47,8 +47,11 @@ class FaultInjectionFinder():
             elif pc_control:
                 # solve for PC to see if we can
                 binary, _ = self.engine.skip_instruction(bytearray(self.engine.binary), i)
-                solver = PCSolver(binary, self.input_len, self.desired_pc)
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, solver.run()))
+                good_input = None
+                if self.desired_pc:
+                    solver = PCSolver(binary, self.input_len, self.desired_pc)
+                    good_input = solver.run()
+                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, good_input))
             elif self.expected_output and self.expected_output in res_output: 
                 successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, None))
             elif self.expected_exit is not None and self.expected_exit == res_exit: 
