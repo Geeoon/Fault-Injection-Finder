@@ -7,7 +7,7 @@ import angr
 import claripy
 import archinfo
 
-from FaultInjectionFinder.Engine.FIEngine import DEFAULT_BINARY_ADDRESS, DEFAULT_BINARY_MAX_SIZE, DEFAULT_EXIT_ADDRESS, DEFAULT_FAULT_ADDRESS, DEFAULT_RAM_ADDRESS, DEFAULT_RAM_SIZE, DEFAULT_RW_ADDRESS, INSTRUCTION_SIZE
+from FaultInjectionFinder.Engine.FIEngine import DEFAULT_BINARY_ADDRESS, DEFAULT_BINARY_MAX_SIZE, DEFAULT_EXIT_ADDRESS, DEFAULT_FAULT_ADDRESS, DEFAULT_RAM_ADDRESS, DEFAULT_RAM_SIZE, DEFAULT_RW_ADDRESS
 
 class PCSolver():
     """
@@ -24,7 +24,8 @@ class PCSolver():
                  RAM_SIZE: int=DEFAULT_RAM_SIZE,
                  EXIT_ADDRESS: int=DEFAULT_EXIT_ADDRESS,
                  RW_ADDRESS: int=DEFAULT_RW_ADDRESS,
-                 FAULT_ADDRESS: int=DEFAULT_FAULT_ADDRESS):
+                 FAULT_ADDRESS: int=DEFAULT_FAULT_ADDRESS,
+                 enable_thumb: bool=True):
         """
         :param binary: the binary to solve for
         :param input_size: the size of the input
@@ -36,18 +37,25 @@ class PCSolver():
         :param EXIT_ADDRESS: the address that should be written for an exit
         :param RW_ADDRESS: the IO address
         :param FAULT_ADDRESS: the address that should be written to in the event of a successful fault
+        :param enable_thumb: whether or not to run as ARMv6 Thumb
         """
-        self.desired_pc = desired_pc | 1  # THUMB
+        self.thumb = enable_thumb
+        self.desired_pc = desired_pc
+        arch = 'arm'
+        if self.thumb:
+            self.desired_pc |= 1
+            arch = archinfo.ArchARMEL()
+        
         self.project = angr.load_shellcode(
             binary,
-            # arch='arm',  # NOT THUMB
-            arch=archinfo.ArchARMEL(),  # THUMB
+            arch=arch,
             start_offset=0,
             load_address=BINARY_ADDRESS,
-            thumb=True  # THUMB
+            thumb=self.thumb
         )
+
         self.state = self.project.factory.blank_state(
-            addr=BINARY_ADDRESS | 1,  # `| 1` FOR THUMB
+            addr=BINARY_ADDRESS | 1 if self.thumb else BINARY_ADDRESS,
             add_options={
                 angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS,
                 angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,

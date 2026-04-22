@@ -1,7 +1,9 @@
 # CC=gcc
 CC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
+ifneq ($(NO_THUMB),1)
 CFLAGS += -march=armv6-m -mthumb  # specific to ARM-Cortex-M0+, comment line for ARM32
+endif
 CFLAGS += -O2
 CFLAGS += -ffunction-sections
 CFLAGS += -fdata-sections
