@@ -7,8 +7,8 @@ R = [getattr(arm_const, f"UC_ARM_REG_R{i}") for i in range(13)]
 PC = arm_const.UC_ARM_REG_PC
 LR = arm_const.UC_ARM_REG_LR
 SP = arm_const.UC_ARM_REG_SP
-NOP = b"\x00\xf0\x20\xe3"
-
+# NOP = b"\x00\xf0\x20\xe3"
+NOP = b"\x00\xbf"  # ARMv6 Thumb
 DEFAULT_BINARY_ADDRESS = 0x1000000
 DEFAULT_BINARY_MAX_SIZE = 0x10000
 DEFAULT_RAM_ADDRESS = 0x2000000
@@ -16,6 +16,7 @@ DEFAULT_RAM_SIZE = 0x10000
 DEFAULT_EXIT_ADDRESS = 0x3000000
 DEFAULT_RW_ADDRESS = 0x3001000
 DEFAULT_FAULT_ADDRESS = 0x3002000
+INSTRUCTION_SIZE = 2  # 4 for normal ARM32
 
 class InvalidFetch(Exception):
     """
@@ -54,7 +55,8 @@ class FIEngine():
         :param RW_ADDRESS: the IO address
         :param FAULT_ADDRESS: the address that should be written to in the event of a successful fault
         """
-        self.md = Cs(CS_ARCH_ARM, CS_MODE_ARM)  # initialize capstone disassembler
+        # self.md = Cs(CS_ARCH_ARM, CS_MODE_ARM)  # initialize capstone disassembler
+        self.md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)  # initialize capstone disassembler for ARMv6 Thumb
         self.binary = binary
         self.input = input
         self._mutated_input = input
@@ -74,7 +76,7 @@ class FIEngine():
         self._invalid_fetch = None
         self._create_unicorn()
         self.mu.reg_write(SP, self.RAM_ADDRESS + self.RAM_SIZE)  # set the stack pointer to the top of our RAM
-        self.mu.reg_write(PC, self.BINARY_ADDRESS)  # reset PC to start of binary.  Note: add `| 1`` for thumb
+        self.mu.reg_write(PC, self.BINARY_ADDRESS | 1)  # reset PC to start of binary.  Note: add `| 1`` for thumb
         self.mu.reg_write(LR, 0x0)  # reset LR
         # reset all general purpose registers
         for reg in R:
@@ -82,7 +84,8 @@ class FIEngine():
 
     def _create_unicorn(self):
         # initalize emulator
-        self.mu = Uc(UC_ARCH_ARM, UC_MODE_ARM)
+        # self.mu = Uc(UC_ARCH_ARM, UC_MODE_ARM)
+        self.mu = Uc(UC_ARCH_ARM, UC_MODE_THUMB | UC_MODE_MCLASS)  # ARMv6 Thumb
         self.mu.mem_map(self.BINARY_ADDRESS, self.BINARY_MAX_SIZE, UC_PROT_READ | UC_PROT_EXEC)  # map the binary as read and execute only
         self.mu.mem_map(self.RAM_ADDRESS, self.RAM_SIZE, UC_PROT_READ | UC_PROT_WRITE)  # map RAM as read and write only  (maybe add execute for fun?)
         self.mu.mem_map(self.EXIT_ADDRESS, 0x1000, UC_PROT_WRITE)  # add exit hook to memory map
@@ -148,14 +151,14 @@ class FIEngine():
             logging.warning(f"Write to unmapped address: {hex(address)}")
 
     def skip_instruction(self, binary: bytearray, index: int) -> tuple[bytes, list]:
-        byte_offset = index * 4
-        decoded = list(self.md.disasm(binary[byte_offset:byte_offset + 4], 0x0))
+        byte_offset = index * INSTRUCTION_SIZE
+        decoded = list(self.md.disasm(binary[byte_offset:byte_offset + INSTRUCTION_SIZE], 0x0))
         if not decoded:
             logging.error("Could not decode the instruction to be skipped")
         else:
             skipped_instruction = decoded[0]
             logging.debug(f"Injecting a fault at {index}, replacing {skipped_instruction.mnemonic} {skipped_instruction.op_str} with NOP")
-        binary[byte_offset:byte_offset + 4] = NOP
+        binary[byte_offset:byte_offset + INSTRUCTION_SIZE] = NOP
         return bytes(binary), decoded
     
     def run(self, fault_index: int=None, max_iter: int=1000):
@@ -185,7 +188,8 @@ class FIEngine():
         self._old_pc = None
         try:
             try:
-                self.mu.emu_start(self.BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
+                # `| 1` for thumb
+                self.mu.emu_start(self.BINARY_ADDRESS | 1, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
             except UcError as e:
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     raise InvalidFetch

@@ -27,5 +27,6 @@ For triggers, we could do the following:
 
 # Notes
 `arm-none-eabi-objdump -D -b binary -m arm <binary> | less` to examine the raw binary as assembly
+`arm-none-eabi-objdump -D -b binary -m arm -M force-thumb --architecture=armv6 sha256.bin | less` for ARMv6 Thumb
 
 We need to figure out how to make it so that we only skip an instruction once, i.e., just patching the binary with a NOP isn't accurate, since it might run into that instruction again without it being glitched.

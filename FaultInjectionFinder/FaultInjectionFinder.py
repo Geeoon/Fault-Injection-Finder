@@ -1,6 +1,7 @@
 import logging
 
 from FaultInjectionFinder.Engine import FIEngine, PCSolver
+from FaultInjectionFinder.Engine.FIEngine import INSTRUCTION_SIZE
 
 class FaultInjectionFinder():
     def __init__(self, binary_path: str, input: bytes, expected_output: bytes=None, expected_exit: int=None, expected_regs: dict=None, desired_pc: int=None):
@@ -37,7 +38,7 @@ class FaultInjectionFinder():
     def find_faults(self) -> list:
         logging.info("Searching for faults...")
         successes = []
-        for i in range(len(self.engine.binary) // 4):
+        for i in range(len(self.engine.binary) // INSTRUCTION_SIZE):
             res = self.engine.run(i, max_iter=100000)
             if not res:  # skip if it didn't even run
                 continue
