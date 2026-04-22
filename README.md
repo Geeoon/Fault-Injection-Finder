@@ -27,3 +27,5 @@ For triggers, we could do the following:
 
 # Notes
 `arm-none-eabi-objdump -D -b binary -m arm <binary> | less` to examine the raw binary as assembly
+
+We need to figure out how to make it so that we only skip an instruction once, i.e., just patching the binary with a NOP isn't accurate, since it might run into that instruction again without it being glitched.
