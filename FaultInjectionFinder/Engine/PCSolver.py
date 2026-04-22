@@ -5,6 +5,7 @@ import logging
 
 import angr
 import claripy
+import archinfo
 
 from FaultInjectionFinder.Engine.FIEngine import DEFAULT_BINARY_ADDRESS, DEFAULT_BINARY_MAX_SIZE, DEFAULT_EXIT_ADDRESS, DEFAULT_FAULT_ADDRESS, DEFAULT_RAM_ADDRESS, DEFAULT_RAM_SIZE, DEFAULT_RW_ADDRESS, INSTRUCTION_SIZE
 
@@ -36,15 +37,17 @@ class PCSolver():
         :param RW_ADDRESS: the IO address
         :param FAULT_ADDRESS: the address that should be written to in the event of a successful fault
         """
-        self.desired_pc = desired_pc
+        self.desired_pc = desired_pc | 1  # THUMB
         self.project = angr.load_shellcode(
             binary,
-            arch='arm',
+            # arch='arm',  # NOT THUMB
+            arch=archinfo.ArchARMEL(),  # THUMB
             start_offset=0,
-            load_address=BINARY_ADDRESS
+            load_address=BINARY_ADDRESS,
+            thumb=True  # THUMB
         )
         self.state = self.project.factory.blank_state(
-            addr=BINARY_ADDRESS,
+            addr=BINARY_ADDRESS | 1,  # `| 1` FOR THUMB
             add_options={
                 angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS,
                 angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,
