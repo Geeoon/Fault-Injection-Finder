@@ -16,6 +16,7 @@ class PCSolver():
     """
     def __init__(self,
                  binary: bytes,
+                 fault_index: int,
                  input_size: int,
                  desired_pc: int,
                  BINARY_ADDRESS: int=DEFAULT_BINARY_ADDRESS,
@@ -29,6 +30,7 @@ class PCSolver():
         """
         :param binary: the binary to solve for
         :param input_size: the size of the input
+        :param fault_index: the "clock cycle" for the fault to occur on
         :param desired_pc: the program counter we want to solve for
         :param BINARY_ADDRESS: the address where the binary should be loaded
         :param BINARY_MAX_SIZE: the size of flash allocated for the binary
@@ -41,6 +43,7 @@ class PCSolver():
         """
         self.thumb = enable_thumb
         self.desired_pc = desired_pc
+        self.fault_index = fault_index
         arch = 'arm'
         if self.thumb:
             self.desired_pc |= 1
@@ -80,8 +83,16 @@ class PCSolver():
             mem_write_address=EXIT_ADDRESS,
             action=self._exit_hook
         )
+        self.state.inspect.b('instruction', when=angr.BP_BEFORE, action=self._instruction_hook)
         # for IO write and fault hook, we can just ignore it since it's not useful for us
         self.symbolic_inputs = []
+    
+    def _instruction_hook(self, state):
+        self._cycle_count += 1
+        if self._cycle_count == self.fault_index:
+            # skip instruction
+
+            state.ip += 2 if self.thumb else 4
 
     def _io_read_hook(self, state):
         if self.input_size:
@@ -104,7 +115,7 @@ class PCSolver():
 
     def _exit_hook(self, state):
         # stop angr
-        state.add_constraints(state.solver.false)  # unsatisfyable constraint
+        state.add_constraints(claripy.false)  # unsatisfyable constraint
 
     def _pc_is_target(self, state):
         ip = state.ip
@@ -137,6 +148,7 @@ class PCSolver():
         # this severely limits the number of states that will be explored
         simgr.use_technique(angr.exploration_techniques.LoopSeer(bound=32))
         self._steps = 0
+        self._cycle_count = 0
         self._max_iter = max_iter
         simgr.explore(find=self._pc_is_target, num_find=1, step_func=self._step_func)
         
