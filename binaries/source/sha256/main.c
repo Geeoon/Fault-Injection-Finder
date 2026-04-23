@@ -3,6 +3,7 @@
 
 extern int _read(int fd, char* buf, int len);
 extern int _write(int fd, char* buf, int len);
+extern void pwned(void);
 extern void _successful_fault(void);
 
 int main() {
@@ -20,5 +21,7 @@ int main() {
         return 0;
     }
     _write(0, "access denied.", strlen("access denied."));
+    volatile int dummy = 0;
+    if (dummy) pwned(); 
     return 1;
 }

@@ -18,5 +18,7 @@ int main(void) {
     // decrypt data
     AES_DecryptInit(&ctx, key);
     AES_Decrypt(&ctx, data, data);
+    volatile int dummy = 0;
+    if (dummy) pwned(); 
     return 0;
 }

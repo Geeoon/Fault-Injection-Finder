@@ -74,7 +74,7 @@ class PCSolver():
             'mem_read',
             when=angr.BP_BEFORE,
             mem_read_address=RW_ADDRESS,
-            mem_read_length=1,
+            # mem_read_length=1,
             action=self._io_read_hook
         )
         # set up exit hook
@@ -85,19 +85,22 @@ class PCSolver():
             action=self._exit_hook
         )
         # for IO write and fault hook, we can just ignore it since it's not useful for us
-        self.symbolic_inputs = []
+        self.logger = logging.getLogger(__name__)
     
     def _io_read_hook(self, state):
-        if self.input_size:
+        consumed = state.globals.get('inputs_consumed', 0)
+        if consumed < self.input_size:
             # give a symbollic byte
             sym_inp = claripy.BVS('io_read', 8)  # single symbolic input
-            self.symbolic_inputs.append(sym_inp)
+            symbolic_inputs = state.globals.get('symbolic_inputs', [])
+            symbolic_inputs = symbolic_inputs + [sym_inp]  # create new list, don't mutate the existing one
+            state.globals['symbolic_inputs'] = symbolic_inputs
             state.memory.store(
                 self.RW_ADDRESS,
                 sym_inp,
                 endness=self.project.arch.memory_endness
             )
-            self.input_size -= 1
+            state.globals['inputs_consumed'] = consumed + 1
         else:
             # send a null byte
             state.memory.store(
@@ -114,6 +117,7 @@ class PCSolver():
     def _pc_is_target(self, state):
         ip = state.ip
         if ip.symbolic:
+            self.logger.info("PC is symbolic")
             return state.solver.satisfiable(
                 extra_constraints=[ip == self.desired_pc]
             )
@@ -127,31 +131,46 @@ class PCSolver():
         simgr = self.project.factory.simgr(
             self.state,
             save_unconstrained=True,
-            save_unsat=True
+            save_unsat=True,
+            stashes={
+                'active': [],
+                'deadended': [],
+                'unsat': [],
+                'unconstrained': [],
+                'found': [],
+            }
         )
         # veritesting, does not work with our setup due to internal angr weirdness
         # simgr.use_technique(angr.exploration_techniques.veritesting.Veritesting())
         # simple max iterations
         simgr.use_technique(angr.exploration_techniques.LengthLimiter(max_length=max_iter))
-        # this severely limits the number of states that will be explored
         simgr.use_technique(angr.exploration_techniques.LoopSeer(bound=32))
         self._steps = 0
         while simgr.active:
             simgr.step(num_inst=1)
             if simgr.active:
-                logging.info(f"Step {self._steps}, active: {len(simgr.active)}, constraints: {len(simgr.active[0].solver.constraints)}")
+                self.logger.debug(f"Step {self._steps}, active: {len(simgr.active)}, constraints: {len(simgr.active[0].solver.constraints)}")
             self._steps += 1
             for state in simgr.active:
                 state.globals['cycle_count'] = state.globals.get('cycle_count', 0) + 1
                 # Check find condition
                 if state.globals['cycle_count'] == self.fault_index - 1:  # cycle_count stores the last executed cycle, so check against index - 1
+                    old_ip = state.addr
+                    block = self.project.factory.block(state.addr, thumb=self.thumb)
+                    if block.capstone.insns:
+                        insn = block.capstone.insns[0]
+                        self.logger.debug(f"Cycle to be skipped: {state.globals.get('cycle_count', 0)}, addr: {hex(insn.address)}, insn: {insn.mnemonic} {insn.op_str}")
                     state.ip = state.addr + (2 if self.thumb else 4)
+                    self.logger.info(f"Skipping at cycle {state.globals['cycle_count'] + 1}.  Skipped from: {hex(old_ip & -2)} to: {hex(state.solver.eval(state.ip) & -2)}")
+                    block = self.project.factory.block(state.addr, thumb=self.thumb)
+                    if block.capstone.insns:
+                        insn = block.capstone.insns[0]
+                        self.logger.debug(f"Cycle to run now {state.globals.get('cycle_count', 0)}, addr: {hex(insn.address)}, insn: {insn.mnemonic} {insn.op_str}")
+
             simgr.move(from_stash='active', to_stash='found', filter_func=self._pc_is_target)
             if simgr.found:
                 break
                 
-        # simgr.explore(find=self._pc_is_target, num_find=1, step_func=self._step_func)
-        
         if simgr.found:
             candidates = simgr.found
         elif simgr.unconstrained:
@@ -163,7 +182,7 @@ class PCSolver():
                 state.add_constraints(state.ip == self.desired_pc)
             if state.solver.satisfiable():
                 result = []
-                for sym_byte in self.symbolic_inputs:
+                for sym_byte in state.globals.get('symbolic_inputs', []):
                     result.append(state.solver.eval(sym_byte))
                 return bytes(result)
         return None

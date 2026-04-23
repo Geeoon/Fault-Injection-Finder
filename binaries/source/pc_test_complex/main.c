@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 extern int _read(int fd, char* buf, int len);
+extern void pwned(void);
 
 int main(void) {
     uintptr_t addr;
@@ -25,5 +26,7 @@ int main(void) {
     addr = (addr >> 5) | (addr << (32 - 5));
 
     ((void (*)(void))addr)();
+    volatile int dummy = 0;
+    if (dummy) pwned(); 
     return 0;
 }

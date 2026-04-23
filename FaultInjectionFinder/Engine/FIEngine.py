@@ -77,6 +77,7 @@ class FIEngine():
         self.RW_ADDRESS = RW_ADDRESS
         self.FAULT_ADDRESS = FAULT_ADDRESS
         self.is_done = False
+        self.logger = logging.getLogger(__name__)
 
     def _init_emulator(self, index):
         # reset emulator
@@ -135,32 +136,32 @@ class FIEngine():
         if self._instruction_count == self._skip_index:
             decoded = list(self.md.disasm(mu.mem_read(address, size), 0x0))
             if not decoded:
-                logging.error("Could not decode the instruction to be skipped")
+                self.logger.error("Could not decode the instruction to be skipped")
                 mu.emu_stop()
             else:
                 self._decoded = decoded
-                logging.debug(f"Skipping 0x{address:x}: {self._decoded[0].mnemonic} {self._decoded[0].op_str} at \"clock cycle\" number {self._instruction_count}.")
+                self.logger.info(f"Skipping 0x{address:x}: {self._decoded[0].mnemonic} {self._decoded[0].op_str} at \"clock cycle\" number {self._instruction_count}.")
                 mu.reg_write(PC, (address+size) | (1 if self.thumb else 0))
 
     def _exit_hook(self, mu, access, address, size, value, user_data) -> bool:
         value = self._to_signed_32(value)
-        logging.info(f"Emulation stopped with exit code {value}")
+        self.logger.debug(f"Emulation stopped with exit code {value}")
         self.exit_code = value
         mu.emu_stop()
         return True
 
     def _rw_hook(self, mu, access, address, size, value, user_data) -> bool:
         if access == UC_MEM_WRITE:
-            logging.debug(f"IO write: {value.to_bytes(1)}")
+            self.logger.debug(f"IO write: {value.to_bytes(1)}")
             self.output += value.to_bytes(1)
         elif access == UC_MEM_READ:
             if self._mutated_input:
                 data = (self._mutated_input[0]).to_bytes(1)
                 self._mutated_input = self._mutated_input[1:]
             else:
-                logging.debug("Ran out of input, sending null bytes")
+                self.logger.debug("Ran out of input, sending null bytes")
                 data = b'\0'
-            logging.debug(f"IO read, sending {data}")
+            self.logger.debug(f"IO read, sending {data}")
             mu.mem_write(self.RW_ADDRESS, data)
         return True
     
@@ -170,7 +171,7 @@ class FIEngine():
     
     def _mem_invalid_hook(self, mu, access, address, size, value, user_data) -> bool:
         if access == UC_MEM_FETCH_UNMAPPED:
-            logging.info(f"Fetch from unmapped address: {hex(address)}")
+            self.logger.debug(f"Fetch from unmapped address: {hex(address)}")
             if self._invalid_fetch is None:
                 self._invalid_fetch = address  # store the invalid access
                 # we will re-run this case with a different input and see if 
@@ -181,9 +182,9 @@ class FIEngine():
             self.mu.emu_stop()
             return False
         elif access == UC_MEM_READ_UNMAPPED:
-            logging.warning(f"Read from unmapped address: {hex(address)}")
+            self.logger.debug(f"Read from unmapped address: {hex(address)}")
         elif access == UC_MEM_WRITE_UNMAPPED:
-            logging.warning(f"Write to unmapped address: {hex(address)}")
+            self.logger.debug(f"Write to unmapped address: {hex(address)}")
 
     def skip_instruction(self, binary: bytearray, index: int) -> tuple[bytes, list]:
         """
@@ -192,20 +193,20 @@ class FIEngine():
         byte_offset = index * self.INSTRUCTION_SIZE
         decoded = list(self.md.disasm(binary[byte_offset:byte_offset + self.INSTRUCTION_SIZE], 0x0))
         if not decoded:
-            logging.error("Could not decode the instruction to be skipped")
+            self.logger.error("Could not decode the instruction to be skipped")
         else:
             skipped_instruction = decoded[0]
-            logging.debug(f"Injecting a fault at {index}, replacing {skipped_instruction.mnemonic} {skipped_instruction.op_str} with NOP")
+            self.logger.info(f"Injecting a fault at {index}, replacing {skipped_instruction.mnemonic} {skipped_instruction.op_str} with NOP")
         binary[byte_offset:byte_offset + self.INSTRUCTION_SIZE] = self.nop
         return bytes(binary), decoded
     
-    def run(self, fault_index: int=None, max_iter: int=1000):
+    def run(self, fault_index: int=None, max_iter: int=20000):
         """
         Runs the binary with an optional fault index
         :param fault_index: the instruction to fault (0 being the first instruction in the binary)
         :param max_iter: the max number of iterations to run the program for.  Set to 0 to run until exit
         """
-        logging.debug("Starting the emulation")
+        self.logger.info("Starting the emulation")
         self._init_emulator(fault_index)
         try:
             try:
@@ -213,9 +214,9 @@ class FIEngine():
             except UcError as e:
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     raise InvalidFetch
-                logging.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")
+                self.logger.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")
         except InvalidFetch as e:
-            logging.info(f"Emulator fetched invalid instruction.  Trying again with a different input.")
+            self.logger.debug(f"Emulator fetched invalid instruction.  Trying again with a different input.")
             self._init_emulator(fault_index)
             # flip all bits for normal input
             self._mutated_input = self._flip_bits(self.input)
@@ -225,14 +226,14 @@ class FIEngine():
             except UcError as e:
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     pass
-                logging.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")                
+                self.logger.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")                
         # if we exit without hittinig the glitch index, then there is no more to do
         self.is_done = self._skip_index > self._instruction_count
 
         if self.exit_code is None:
-            logging.debug("Program did not exit (emulation stopped before program exit).")
+            self.logger.debug("Program did not exit (emulation stopped before program exit).")
         if not self._decoded:
-            logging.warning("Could not decode instruction, not attempting to find faults")
+            self.logger.warning("Could not decode instruction, not attempting to find faults")
             return None
         
         # get registers
@@ -243,6 +244,6 @@ class FIEngine():
         return self._decoded, self.output, self.exit_code, final_registers, self._pc_control, self.trigger
 
         # print registers
-        # logging.info("Emulation done. Below is the CPU context")
-        # for i in range(4): logging.info(f">>> R{i} = 0x{self.mu.reg_read(R[i]):x}")
+        # self.logger.info("Emulation done. Below is the CPU context")
+        # for i in range(4): self.logger.info(f">>> R{i} = 0x{self.mu.reg_read(R[i]):x}")
         
