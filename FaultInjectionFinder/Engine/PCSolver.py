@@ -115,7 +115,8 @@ class PCSolver():
 
     def _exit_hook(self, state):
         # stop angr
-        state.add_constraints(claripy.false)  # unsatisfyable constraint
+        state.add_constraints(claripy.BVV(0, 1))  # unsatisfyable constraint
+        state._satisfiable = False
 
     def _pc_is_target(self, state):
         ip = state.ip
