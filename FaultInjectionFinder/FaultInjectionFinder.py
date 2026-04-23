@@ -39,7 +39,7 @@ class FaultInjectionFinder():
     def find_faults(self) -> list:
         logging.info("Searching for faults...")
         successes = []
-        index = 0
+        index = 1
         while not self.engine.is_done and index < 100000:  # also set hard limit in case it goes forever
             index += 1
             res = self.engine.run(index, max_iter=100000)

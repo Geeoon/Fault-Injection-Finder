@@ -31,6 +31,7 @@ class PCSolver():
         :param binary: the binary to solve for
         :param input_size: the size of the input
         :param fault_index: the "clock cycle" for the fault to occur on
+        :param cycle_insn_map: the cycles to instruction called map
         :param desired_pc: the program counter we want to solve for
         :param BINARY_ADDRESS: the address where the binary should be loaded
         :param BINARY_MAX_SIZE: the size of flash allocated for the binary
@@ -83,16 +84,9 @@ class PCSolver():
             mem_write_address=EXIT_ADDRESS,
             action=self._exit_hook
         )
-        self.state.inspect.b('instruction', when=angr.BP_BEFORE, action=self._instruction_hook)
         # for IO write and fault hook, we can just ignore it since it's not useful for us
         self.symbolic_inputs = []
     
-    def _instruction_hook(self, state):
-        self._cycle_count += 1
-        if self._cycle_count == self.fault_index:
-            # skip instruction
-            state.ip += 2 if self.thumb else 4
-
     def _io_read_hook(self, state):
         if self.input_size:
             # give a symbollic byte
@@ -148,9 +142,19 @@ class PCSolver():
         # this severely limits the number of states that will be explored
         simgr.use_technique(angr.exploration_techniques.LoopSeer(bound=32))
         self._steps = 0
-        self._cycle_count = 0
-        self._max_iter = max_iter
-        simgr.explore(find=self._pc_is_target, num_find=1, step_func=self._step_func)
+        while simgr.active:
+            simgr.step(num_inst=1)
+            for state in simgr.active:
+                state.globals['cycle_count'] = state.globals.get('cycle_count', 0) + 1
+                # Check find condition
+                simgr.move(from_stash='active', to_stash='found', 
+                            filter_func=self._pc_is_target)
+                if simgr.found:
+                    break
+                if state.globals['cycle_count'] == self.fault_index - 1:  # cycle_count stores the last executed cycle, so check against index - 1
+                    state.ip = state.addr + 2 if self.thumb else 4
+                
+        # simgr.explore(find=self._pc_is_target, num_find=1, step_func=self._step_func)
         
         if simgr.found:
             candidates = simgr.found
