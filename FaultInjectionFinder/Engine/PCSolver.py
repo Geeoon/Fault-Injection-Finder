@@ -91,7 +91,6 @@ class PCSolver():
         self._cycle_count += 1
         if self._cycle_count == self.fault_index:
             # skip instruction
-
             state.ip += 2 if self.thumb else 4
 
     def _io_read_hook(self, state):

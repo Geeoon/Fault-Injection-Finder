@@ -39,25 +39,27 @@ class FaultInjectionFinder():
     def find_faults(self) -> list:
         logging.info("Searching for faults...")
         successes = []
-        for i in range(len(self.engine.binary) * 2):  # magic number, no real meaning
-            res = self.engine.run(i, max_iter=100000)
+        index = 0
+        while not self.engine.is_done and index < 100000:  # also set hard limit in case it goes forever
+            index += 1
+            res = self.engine.run(index, max_iter=100000)
             if not res:  # skip if it didn't even run
                 continue
             skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger = res
             if trigger:
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, None))
+                successes.append((index, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, None))
             elif pc_control:
                 # solve for PC to see if we can
                 # binary, _ = self.engine.skip_instruction(bytearray(self.engine.binary), i)
                 good_input = None
                 if self.desired_pc is not None:
-                    solver = PCSolver(self.engine.binary, i, self.input_len, self.desired_pc, enable_thumb=self.thumb)
+                    solver = PCSolver(self.engine.binary, index, self.input_len, self.desired_pc, enable_thumb=self.thumb)
                     good_input = solver.run()
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, good_input))
+                successes.append((index, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, good_input))
             elif self.expected_output and self.expected_output in res_output: 
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, None))
+                successes.append((index, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, None))
             elif self.expected_exit is not None and self.expected_exit == res_exit: 
-                successes.append((i, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, None))
+                successes.append((index, skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, None))
             elif self.expected_regs:  # todo: finish this
                 pass
                 # successes.append((skipped_instruction, res_output, res_exit, res_regs))

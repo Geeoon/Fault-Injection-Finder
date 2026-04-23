@@ -76,6 +76,7 @@ class FIEngine():
         self.EXIT_ADDRESS = EXIT_ADDRESS
         self.RW_ADDRESS = RW_ADDRESS
         self.FAULT_ADDRESS = FAULT_ADDRESS
+        self.is_done = False
 
     def _init_emulator(self, index):
         # reset emulator
@@ -93,6 +94,12 @@ class FIEngine():
         self._skip_index = index
         self._instruction_count = 0
         self.trigger = False
+
+        # write the binary to memory
+        self.mu.mem_write(self.BINARY_ADDRESS, self.binary)  # write our binary to memory
+        self._decoded = None  # gets set by the instruction hook
+        # used for keeping track of whether our input influences the PC
+        self._pc_control = False
 
     def _create_unicorn(self):
         # initalize emulator
@@ -163,7 +170,7 @@ class FIEngine():
     
     def _mem_invalid_hook(self, mu, access, address, size, value, user_data) -> bool:
         if access == UC_MEM_FETCH_UNMAPPED:
-            logging.warning(f"Fetch from unmapped address: {hex(address)}")
+            logging.info(f"Fetch from unmapped address: {hex(address)}")
             if self._invalid_fetch is None:
                 self._invalid_fetch = address  # store the invalid access
                 # we will re-run this case with a different input and see if 
@@ -200,46 +207,39 @@ class FIEngine():
         """
         logging.debug("Starting the emulation")
         self._init_emulator(fault_index)
-
-        self._decoded = None  # gets set by the instruction hook
-
-        # write the binary to memory
-        self.mu.mem_write(self.BINARY_ADDRESS, self.binary)  # write our binary to memory
-
-        # used for keeping track of whether our input influences the PC
-        self._pc_control = False
-        self._old_pc = None
         try:
             try:
                 self.mu.emu_start(self.BINARY_ADDRESS | 1 if self.thumb else self.BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
             except UcError as e:
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     raise InvalidFetch
-                logging.error(f"Emulator crashed (likely just due to the binary being corrupted): {str(e)}")
+                logging.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")
         except InvalidFetch as e:
             logging.info(f"Emulator fetched invalid instruction.  Trying again with a different input.")
-            self._old_pc = self.mu.reg_read(PC)
             self._init_emulator(fault_index)
             # flip all bits for normal input
             self._mutated_input = self._flip_bits(self.input)
             self._pc_control = True
             try:
-                self.mu.emu_start(self.BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
+                self.mu.emu_start(self.BINARY_ADDRESS | 1 if self.thumb else self.BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
             except UcError as e:
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     pass
-                logging.error(f"Emulator crashed (likely just due to the binary being corrupted): {str(e)}")
-                
+                logging.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")                
+        # if we exit without hittinig the glitch index, then there is no more to do
+        self.is_done = self._skip_index > self._instruction_count
+
         if self.exit_code is None:
             logging.debug("Program did not exit (emulation stopped before program exit).")
-
+        if not self._decoded:
+            logging.warning("Could not decode instruction, not attempting to find faults")
+            return None
+        
         # get registers
         final_registers = {}
         for i in range(len(R)):
             final_registers[f'R{i}'] = self.mu.reg_read(R[i])
         final_registers['PC'] = self.mu.reg_read(PC)
-        if self._pc_control:
-            final_registers['Old PC'] = self._old_pc
         return self._decoded, self.output, self.exit_code, final_registers, self._pc_control, self.trigger
 
         # print registers
