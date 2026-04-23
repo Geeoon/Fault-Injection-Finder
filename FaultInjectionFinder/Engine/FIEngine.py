@@ -86,7 +86,7 @@ class FIEngine():
         self._invalid_fetch = None
         self._create_unicorn()
         self.mu.reg_write(SP, self.RAM_ADDRESS + self.RAM_SIZE)  # set the stack pointer to the top of our RAM
-        self.mu.reg_write(PC, self.BINARY_ADDRESS | 1 if self.thumb else self.BINARY_ADDRESS)  # reset PC to start of binary
+        self.mu.reg_write(PC, (self.BINARY_ADDRESS | 1) if self.thumb else (self.BINARY_ADDRESS))  # reset PC to start of binary
         self.mu.reg_write(LR, 0x0)  # reset LR
         # reset all general purpose registers
         for reg in R:
@@ -209,7 +209,7 @@ class FIEngine():
         self._init_emulator(fault_index)
         try:
             try:
-                self.mu.emu_start(self.BINARY_ADDRESS | 1 if self.thumb else self.BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
+                self.mu.emu_start((self.BINARY_ADDRESS) | 1 if self.thumb else (self.BINARY_ADDRESS), 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
             except UcError as e:
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     raise InvalidFetch
@@ -221,7 +221,7 @@ class FIEngine():
             self._mutated_input = self._flip_bits(self.input)
             self._pc_control = True
             try:
-                self.mu.emu_start(self.BINARY_ADDRESS | 1 if self.thumb else self.BINARY_ADDRESS, 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
+                self.mu.emu_start((self.BINARY_ADDRESS | 1) if self.thumb else (self.BINARY_ADDRESS), 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
             except UcError as e:
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     pass

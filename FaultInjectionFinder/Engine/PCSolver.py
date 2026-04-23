@@ -59,7 +59,7 @@ class PCSolver():
         )
 
         self.state = self.project.factory.blank_state(
-            addr=BINARY_ADDRESS | 1 if self.thumb else BINARY_ADDRESS,
+            addr=(BINARY_ADDRESS | 1) if self.thumb else (BINARY_ADDRESS),
             add_options={
                 angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS,
                 angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,
@@ -120,12 +120,6 @@ class PCSolver():
         else:
             return state.solver.eval(ip) == self.desired_pc
 
-    def _step_func(self, simgr):
-        if simgr.active:
-            logging.info(f"Step {self._steps}, active: {len(simgr.active)}, constraints: {len(simgr.active[0].solver.constraints)}")
-        self._steps += 1
-        return simgr
-
     def run(self, max_iter: int=1000) -> bytes | None:
         """
         Run the solver.
@@ -144,15 +138,17 @@ class PCSolver():
         self._steps = 0
         while simgr.active:
             simgr.step(num_inst=1)
+            if simgr.active:
+                logging.info(f"Step {self._steps}, active: {len(simgr.active)}, constraints: {len(simgr.active[0].solver.constraints)}")
+            self._steps += 1
             for state in simgr.active:
                 state.globals['cycle_count'] = state.globals.get('cycle_count', 0) + 1
                 # Check find condition
-                simgr.move(from_stash='active', to_stash='found', 
-                            filter_func=self._pc_is_target)
-                if simgr.found:
-                    break
                 if state.globals['cycle_count'] == self.fault_index - 1:  # cycle_count stores the last executed cycle, so check against index - 1
-                    state.ip = state.addr + 2 if self.thumb else 4
+                    state.ip = state.addr + (2 if self.thumb else 4)
+            simgr.move(from_stash='active', to_stash='found', filter_func=self._pc_is_target)
+            if simgr.found:
+                break
                 
         # simgr.explore(find=self._pc_is_target, num_find=1, step_func=self._step_func)
         
