@@ -1,7 +1,7 @@
 import logging
-
 from unicorn import *
 from capstone import *
+from FaultInjectionFinder.Engine import Pre_Processing
 
 R = [getattr(arm_const, f"UC_ARM_REG_R{i}") for i in range(13)]
 PC = arm_const.UC_ARM_REG_PC
@@ -44,8 +44,9 @@ class FIEngine():
                  RAM_SIZE: int=DEFAULT_RAM_SIZE,
                  EXIT_ADDRESS: int=DEFAULT_EXIT_ADDRESS,
                  RW_ADDRESS: int=DEFAULT_RW_ADDRESS,
-                 FAULT_ADDRESS: int=DEFAULT_FAULT_ADDRESS,
-                 enable_thumb: bool=True):
+                 FAULT_ADDRESS: int=DEFAULT_FAULT_ADDRESS, 
+                 enable_thumb: bool=True,
+                 user_sel: int=1):
         """
         :param binary: the binary to examine
         :param BINARY_ADDRESS: the address where the binary should be loaded
@@ -78,6 +79,8 @@ class FIEngine():
         self.FAULT_ADDRESS = FAULT_ADDRESS
         self.is_done = False
         self.logger = logging.getLogger(__name__)
+        self.SKIP_ADDRS = (Pre_Processing(binary, user_sel))
+        print(self.SKIP_ADDRS)
 
     def _init_emulator(self, index):
         # reset emulator
