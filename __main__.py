@@ -9,13 +9,41 @@ logging.basicConfig(
 
 logger = logging.getLogger("FaultInjectionFinder")
 logger.setLevel(logging.DEBUG)
-# finder = FaultInjectionFinder('./binaries/infinite_loop.bin', input=b'whatever', expected_output=b'escaped the loop')
-# finder = FaultInjectionFinder('./binaries/password.bin', input=b'a' * 99, expected_output=b'access granted.', expected_exit=0)
-# finder = FaultInjectionFinder('./binaries/pc_test.bin', input=b'0' * 4, desired_pc=DEFAULT_BINARY_ADDRESS + 0x7c)
+# finder = FaultInjectionFinder(
+#     './binaries/password.bin',
+#     input=b'a' * 1000,
+#     expected_output=b'access granted.',
+#     expected_exit=None,
+#     user_sel=0,
+#     max_iter=2000,
+# )
+
+# finder = FaultInjectionFinder(
+#     './binaries/password.bin',
+#     input=b'password12X',
+#     expected_output=b'access granted.',
+#     expected_exit=None,
+#     user_sel=0,
+#     max_iter=2000,
+# )
+
+finder = FaultInjectionFinder(
+                './binaries/pc_test.bin', 
+                input=b'pass',
+                desired_pc=DEFAULT_BINARY_ADDRESS + 0x7c,
+                expected_exit=None,
+                user_sel=1,
+                max_iter=2000,
+            )
+
+
+#finder = FaultInjectionFinder('./binaries/infinite_loop.bin', input=b'whatever', expected_output=b'escaped the loop')
+#finder = FaultInjectionFinder('./binaries/password.bin', input=b'a' * 99, expected_output=b'access granted.', expected_exit=0)
+#finder = FaultInjectionFinder('./binaries/pc_test.bin', input=b'0' * 4, desired_pc=DEFAULT_BINARY_ADDRESS + 0x7c)
 # finder = FaultInjectionFinder('./binaries/pc_test_complex.bin', input=b'0' * 4, desired_pc=DEFAULT_BINARY_ADDRESS + 0xb0)
 # finder = FaultInjectionFinder('./binaries/sha256.bin', input=b'1' * 16, desired_pc=DEFAULT_BINARY_ADDRESS + 0x2b8)
-finder = FaultInjectionFinder('./binaries/aes_ecb.bin', input=b'a' * 16, desired_pc=DEFAULT_BINARY_ADDRESS + 0x2358)
-# finder = FaultInjectionFinder('./binaries/constraints.bin', input=b'a', desired_pc=DEFAULT_BINARY_ADDRESS + 0xb0)
+#finder = FaultInjectionFinder('./binaries/aes_ecb.bin', input=b'a' * 16, desired_pc=DEFAULT_BINARY_ADDRESS + 0x2358)
+#finder = FaultInjectionFinder('./binaries/constraints.bin', input=b'a', desired_pc=DEFAULT_BINARY_ADDRESS + 0xb0)
 
 # simulate faults
 # pc_test.bin
@@ -42,10 +70,11 @@ print(
 )
 
 for fault in finder.find_faults():
-    i, insns, output, exit_code, regs, pc_control, trigger, input_to_pc = fault
+    i, fault_cycle, insns, output, exit_code, regs, pc_control, trigger, input_to_pc = fault
 
     print("=" * 50)
-    print(f"Fault @ cycle {i}")
+    print(f"Fault target address: 0x{i:x}")
+    print(f"Fault cycle estimate: {fault_cycle}")    
 
     print("\nInstruction(s):")
     for insn in insns:

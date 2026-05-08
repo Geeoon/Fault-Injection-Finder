@@ -1,7 +1,7 @@
 import logging
 from unicorn import *
 from capstone import *
-from FaultInjectionFinder.Engine import Pre_Processing
+from FaultInjectionFinder.PreProcessing import PreProcessing
 
 R = [getattr(arm_const, f"UC_ARM_REG_R{i}") for i in range(13)]
 PC = arm_const.UC_ARM_REG_PC
@@ -79,7 +79,13 @@ class FIEngine():
         self.FAULT_ADDRESS = FAULT_ADDRESS
         self.is_done = False
         self.logger = logging.getLogger(__name__)
-        self.SKIP_ADDRS = (Pre_Processing(binary, user_sel))
+
+        self.SKIP_ADDRS = PreProcessing(
+            binary,
+            user_sel,
+            start_addr=self.BINARY_ADDRESS,
+            thumb=self.thumb
+        ).instructions
         print(self.SKIP_ADDRS)
 
     def _init_emulator(self, index):
@@ -96,8 +102,10 @@ class FIEngine():
         for reg in R:
             self.mu.reg_write(reg, 0x0)
         self._skip_index = index
+        self._skip_cycle = None           # runtime cycle when address was hit
         self._instruction_count = 0
         self.trigger = False
+
 
         # write the binary to memory
         self.mu.mem_write(self.BINARY_ADDRESS, self.binary)  # write our binary to memory
@@ -136,15 +144,24 @@ class FIEngine():
 
     def _instr_hook(self, mu, address, size, user_data):
         self._instruction_count += 1
-        if self._instruction_count == self._skip_index:
-            decoded = list(self.md.disasm(mu.mem_read(address, size), 0x0))
+
+        if address == self._skip_index:
+            decoded = list(self.md.disasm(mu.mem_read(address, size), address))
+
             if not decoded:
                 self.logger.error("Could not decode the instruction to be skipped")
                 mu.emu_stop()
             else:
                 self._decoded = decoded
-                self.logger.info(f"Skipping 0x{address:x}: {self._decoded[0].mnemonic} {self._decoded[0].op_str} at \"clock cycle\" number {self._instruction_count}.")
-                mu.reg_write(PC, (address+size) | (1 if self.thumb else 0))
+                self._skip_cycle = self._instruction_count
+
+                self.logger.info(
+                    f"Skipping 0x{address:x}: {self._decoded[0].mnemonic} "
+                    f"{self._decoded[0].op_str} at runtime cycle {self._skip_cycle}."
+                )
+
+                mu.reg_write(PC, (address + size) | (1 if self.thumb else 0))
+
 
     def _exit_hook(self, mu, access, address, size, value, user_data) -> bool:
         value = self._to_signed_32(value)
@@ -203,7 +220,7 @@ class FIEngine():
         binary[byte_offset:byte_offset + self.INSTRUCTION_SIZE] = self.nop
         return bytes(binary), decoded
     
-    def run(self, fault_index: int=None, max_iter: int=20000):
+    def run(self, fault_index: int=None, max_iter: int=100):
         """
         Runs the binary with an optional fault index
         :param fault_index: the instruction to fault (0 being the first instruction in the binary)
@@ -244,8 +261,15 @@ class FIEngine():
         for i in range(len(R)):
             final_registers[f'R{i}'] = self.mu.reg_read(R[i])
         final_registers['PC'] = self.mu.reg_read(PC)
-        return self._decoded, self.output, self.exit_code, final_registers, self._pc_control, self.trigger
-
+        return (
+            self._decoded,
+            self.output,
+            self.exit_code,
+            final_registers,
+            self._pc_control,
+            self.trigger,
+            self._skip_cycle,
+        )
         # print registers
         # self.logger.info("Emulation done. Below is the CPU context")
         # for i in range(4): self.logger.info(f">>> R{i} = 0x{self.mu.reg_read(R[i]):x}")

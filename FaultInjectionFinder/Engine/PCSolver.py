@@ -65,6 +65,7 @@ class PCSolver():
                 angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,
             }
         )
+        
         self.state.regs.sp = RAM_ADDRESS + RAM_SIZE
         self.state.memory.store(RAM_ADDRESS, b'\x00' * RAM_SIZE)  # zero out RAM
         self.input_size = input_size
@@ -124,7 +125,7 @@ class PCSolver():
         else:
             return state.solver.eval(ip) == self.desired_pc
 
-    def run(self, max_iter: int=1000) -> bytes | None:
+    def run(self, max_iter: int=2000) -> bytes | None:
         """
         Run the solver.
         """
