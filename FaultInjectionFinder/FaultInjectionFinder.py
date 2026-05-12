@@ -1,6 +1,6 @@
 import logging
 
-from FaultInjectionFinder.Engine import FIEngine, PCSolver
+from FaultInjectionFinder.Engine import FIEngine, PCSolver, DEFAULT_BINARY_ADDRESS
 
 class FaultInjectionFinder():
     def __init__(
@@ -13,7 +13,8 @@ class FaultInjectionFinder():
             desired_pc: int=None, 
             enable_thumb: bool=True, 
             max_iter=20000, 
-            user_sel: int = 1
+            user_sel: int = 1,
+            binary_addr: int=DEFAULT_BINARY_ADDRESS
         ):
         """
         Initializer for the FaultInjetionFinder
@@ -24,6 +25,8 @@ class FaultInjectionFinder():
         :param expected_regs: the expected registers of the program for a successful fault
         :param desired_pc: the program counter we should try to set, if we have control
         :param enable_thumb: run the binary as thumb
+        :param user_sel: options that th euser can specify
+        :param binary_addr: the address where the start of the binary should be flashed to
         
         If any of the expected value match, it is considered a success.  For expected_regs, only give the registers that are expected.
         Example:
@@ -42,7 +45,7 @@ class FaultInjectionFinder():
         self.input = input
         self.max_iter = max_iter
         self.user_sel = user_sel
-
+        self.binary_addr = binary_addr
 
         try:
             with open(binary_path, 'rb') as file:
@@ -56,7 +59,8 @@ class FaultInjectionFinder():
             binary=self.binary,
             input=self.input,
             enable_thumb=self.thumb,
-            user_sel=self.user_sel
+            user_sel=self.user_sel,
+            BINARY_ADDRESS=self.binary_addr
         )
 
         logging.info("Searching for faults...")
@@ -68,7 +72,7 @@ class FaultInjectionFinder():
 
         for target in skip_targets:
             index = target["address"]   # index is the target instruction address
-            print(f'Testing fault at 0x{index:x}: {target["mnemonic"]} {target["op_str"]}',flush=True)
+            # print(f'Testing fault at 0x{index:x}: {target["mnemonic"]} {target["op_str"]}',flush=True)
             res = self.engine.run(index, max_iter=self.max_iter)
 
             if not res:
@@ -97,7 +101,8 @@ class FaultInjectionFinder():
                         fault_cycle,
                         len(self.input),
                         self.desired_pc,
-                        enable_thumb=self.thumb
+                        enable_thumb=self.thumb,
+                        BINARY_ADDRESS=self.binary_addr
                     )
                     good_input = solver.run(max_iter=self.max_iter)
 

@@ -86,7 +86,7 @@ class FIEngine():
             start_addr=self.BINARY_ADDRESS,
             thumb=self.thumb
         ).instructions
-        print(self.SKIP_ADDRS)
+        # print(self.SKIP_ADDRS)
 
     def _init_emulator(self, index):
         # reset emulator
@@ -153,13 +153,12 @@ class FIEngine():
                 mu.emu_stop()
             else:
                 self._decoded = decoded
-                self._skip_cycle = self._instruction_count
-
                 self.logger.info(
                     f"Skipping 0x{address:x}: {self._decoded[0].mnemonic} "
                     f"{self._decoded[0].op_str} at runtime cycle {self._skip_cycle}."
+                    f"{self._instruction_count}"
                 )
-
+                self._skip_cycle = self._instruction_count
                 mu.reg_write(PC, (address + size) | (1 if self.thumb else 0))
 
 
