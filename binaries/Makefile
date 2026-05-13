@@ -10,6 +10,7 @@ CFLAGS += -fdata-sections
 LDFLAGS += -Wl,--gc-sections
 LDFLAGS += -nostartfiles
 LDFLAGS += -T linkerfile.ld
+CFLAGS += -ffreestanding
 # CFLAGS += -nostdlib
 # CFLAGS += --specs=nosys.specs
 # CFLAGS += -g2
