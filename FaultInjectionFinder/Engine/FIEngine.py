@@ -45,7 +45,8 @@ class FIEngine():
                  RW_ADDRESS: int=DEFAULT_RW_ADDRESS,
                  FAULT_ADDRESS: int=DEFAULT_FAULT_ADDRESS, 
                  enable_thumb: bool=True,
-                 skip_addrs: list[int]=None):
+                 skip_addrs: list[int]=None,
+                 addr_range: tuple[int, int]=None):
         """
         :param binary: the binary to examine
         :param BINARY_ADDRESS: the address where the binary should be loaded
@@ -80,6 +81,7 @@ class FIEngine():
         self.is_done = False
         self.logger = logging.getLogger(__name__)
         self.skip_addrs = skip_addrs
+        self.addr_range = addr_range
 
     def _init_emulator(self, index):
         # reset emulator
@@ -138,7 +140,7 @@ class FIEngine():
     def _instr_hook(self, mu, address, size, user_data):
         self._instruction_count += 1
         # check _skip_cycle to prevent skipping multiple times
-        if self._skip_cycle is None and self._instruction_count >= self._skip_index:
+        if (self._skip_cycle is None) and (self._instruction_count >= self._skip_index) and ((self.addr_range is None) or ((address >= self.addr_range[0]) and (address <= self.addr_range[1]))):
             # we can now start skipping instructions, if they fit the criteria
             if self.skip_addrs is None or (address & ~1) in self.skip_addrs:
                 # brute force or at the index we should skip

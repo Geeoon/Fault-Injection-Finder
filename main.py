@@ -44,8 +44,14 @@ parser.add_argument("-v", "--verbose", action="count", default=0, help="Verbosit
 parser.add_argument("-n", "--no-thumb", action="store_true", default=False, help="Whether or not to run in thumb mode")
 parser.add_argument("-t", "--types", type=int, default=1, help="Which types of instructions to focus on.  0) Brute force: every clock cycle.  1) Recommended defaults.  2) Only conditional branches.  3) Only compare/tests.  4) Only returns.  5) Only branches, calls, returns, and compares")
 parser.add_argument("-b", "--binary-addr", type=hex_or_dec, default=DEFAULT_BINARY_ADDRESS, help=f"The address to flash the binary to.  Defaults to {hex(DEFAULT_BINARY_ADDRESS)}.  Can be in hex or decimal.")
-parser.add_argument("-u", "--output-dir", type=existing_dir, default=None, help=f"The directory to store faults that were found.")
+parser.add_argument("-u", "--output-dir", type=existing_dir, default=None, help="The directory to store faults that were found.")
+parser.add_argument("-f", "--begin-addr", type=hex_or_dec, default=None, help="The starting address of the instructions that should be considered for skipping.  (inclusive.)  If set, -g must also be set.")
+parser.add_argument("-g", "--end-addr", type=hex_or_dec, default=None, help="The ending address of the instructions that should be considered for skipping.  (inclusive.)  If set, -f must also be set.")
 args = parser.parse_args()
+
+if (args.begin_addr is None) != (args.end_addr is None):
+    parser.error("--begin-addr and --end-addr must both be set or both be unset")
+
 
 print(
 "▄▖    ▜ ▗   ▄▖   ▘    ▗ ▘      ▄▖▘   ▌     \n" +
@@ -80,7 +86,8 @@ finder = FaultInjectionFinder(binary_path=args.binary_path,
                               enable_thumb=(not args.no_thumb),
                               max_iter=args.max_iterations,
                               user_sel=args.types,
-                              binary_addr=args.binary_addr)
+                              binary_addr=args.binary_addr,
+                              addr_range=(args.begin_addr, args.end_addr) if args.begin_addr and args.end_addr else None)
 
 if args.simulate is not None:
     # only simulate
