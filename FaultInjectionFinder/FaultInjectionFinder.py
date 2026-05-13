@@ -1,6 +1,7 @@
 import logging
 
 from FaultInjectionFinder.Engine import FIEngine, PCSolver, DEFAULT_BINARY_ADDRESS
+from FaultInjectionFinder.PreProcessing import PreProcessing
 
 class FaultInjectionFinder():
     def __init__(
@@ -55,49 +56,43 @@ class FaultInjectionFinder():
             raise e
 
     def find_faults(self) -> list:
+        skip_targets = None
+        if self.user_sel:
+            logging.info("Performing pre-processing...")
+            # PreProcessing returns vulnerable instruction addresses.
+            skip_targets = PreProcessing(
+                binary=self.binary,
+                user_sel=self.user_sel,
+                start_addr=self.binary_addr,
+                thumb=self.thumb
+            ).instructions
+            logging.info(f"Found {len(skip_targets)} vulnerable instructions to try.")
+
         self.engine = FIEngine(
             binary=self.binary,
             input=self.input,
             enable_thumb=self.thumb,
-            user_sel=self.user_sel,
-            BINARY_ADDRESS=self.binary_addr
+            BINARY_ADDRESS=self.binary_addr,
+            skip_addrs=list(map(lambda target: target["address"] & ~1, skip_targets)) if skip_targets else None
         )
-
         logging.info("Searching for faults...")
         successes = []
 
-        # PreProcessing returns vulnerable instruction addresses.
-        skip_targets = self.engine.SKIP_ADDRS
-        logging.info(f"Found {len(skip_targets)} vulnerable instructions to try.")
 
-        print(list(map(lambda target: target["address"], skip_targets)))
-        res = self.engine.run(list(map(lambda target: target["address"], skip_targets)), max_iter=self.max_iter)
+        # print(list(map(lambda target: target["address"], skip_targets)))
 
-        for target in skip_targets:
-            index = target["address"]   # index is the target instruction address
-            # print(f'Testing fault at 0x{index:x}: {target["mnemonic"]} {target["op_str"]}',flush=True)
-            res = self.engine.run(index, max_iter=self.max_iter)
-
+        index = 0
+        while not self.engine.is_done and index < self.max_iter:  # set hard limit in-case it goes forever
+            res = self.engine.run(fault_index=index, max_iter=self.max_iter)
             if not res:
-                continue
-            skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, fault_cycle = res
-            # If it just looped forever until max_iter, ignore it.
+                break  # continue?
+            skipped_instruction, skipped_addr, res_output, res_exit, res_regs, pc_control, trigger, fault_cycle, next_index = res
+            index = next_index
+            
             if res_exit is None and not pc_control and not trigger:
-                continue
-            if trigger:
-                successes.append((
-                    index,
-                    fault_cycle,
-                    skipped_instruction,
-                    res_output,
-                    res_exit,
-                    res_regs,
-                    pc_control,
-                    trigger,
-                    None
-                ))
-            elif pc_control:
-                good_input = None
+                continue  # it didn't result in anything cool
+            good_input = None
+            if pc_control:
                 if self.desired_pc is not None:
                     solver = PCSolver(
                         self.engine.binary,
@@ -108,53 +103,17 @@ class FaultInjectionFinder():
                         BINARY_ADDRESS=self.binary_addr
                     )
                     good_input = solver.run(max_iter=self.max_iter)
-
-                successes.append((
-                    index,
-                    fault_cycle,
-                    skipped_instruction,
-                    res_output,
-                    res_exit,
-                    res_regs,
-                    pc_control,
-                    trigger,
-                    good_input
-                ))
-
-            elif self.expected_output and self.expected_output in res_output:
-                successes.append((
-                    index,
-                    fault_cycle,
-                    skipped_instruction,
-                    res_output,
-                    res_exit,
-                    res_regs,
-                    pc_control,
-                    trigger,
-                    None
-                ))
-
-            elif (
-                self.expected_exit is not None
-                and self.expected_exit == res_exit
-                and self.expected_output is not None
-                and self.expected_output in res_output
-            ):
-                successes.append((
-                    index,
-                    fault_cycle,
-                    skipped_instruction,
-                    res_output,
-                    res_exit,
-                    res_regs,
-                    pc_control,
-                    trigger,
-                    None
-                ))
-
-            elif self.expected_regs:
-                pass
-
+            successes.append((
+                skipped_addr,
+                fault_cycle,
+                skipped_instruction,
+                res_output,
+                res_exit,
+                res_regs,
+                pc_control,
+                trigger,
+                good_input
+            ))
         logging.info("Done searching for faults.")
         return successes
 
@@ -164,8 +123,8 @@ class FaultInjectionFinder():
         :param index: the clock cycle of the fault
         :return: the output of the program, exit code, triggered?
         """
-        self.engine = FIEngine(binary=self.binary, input=real_input, enable_thumb=self.thumb)
+        self.engine = FIEngine(binary=self.binary, input=real_input, enable_thumb=self.thumb, BINARY_ADDRESS=self.binary_addr)
         logging.info("Simulating the fault...")
-        skipped_instruction, res_output, res_exit, res_regs, pc_control, trigger, fault_cycle = self.engine.run(index, max_iter=self.max_iter)        
+        skipped_instruction, skipped_addr, res_output, res_exit, res_regs, pc_control, trigger, fault_cycle, next_index = self.engine.run(index, max_iter=self.max_iter)        
         logging.info("Simulation finished")
         return res_output, res_exit, trigger

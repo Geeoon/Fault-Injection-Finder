@@ -1,7 +1,6 @@
 import logging
 from unicorn import *
 from capstone import *
-from FaultInjectionFinder.PreProcessing import PreProcessing
 
 R = [getattr(arm_const, f"UC_ARM_REG_R{i}") for i in range(13)]
 PC = arm_const.UC_ARM_REG_PC
@@ -46,7 +45,7 @@ class FIEngine():
                  RW_ADDRESS: int=DEFAULT_RW_ADDRESS,
                  FAULT_ADDRESS: int=DEFAULT_FAULT_ADDRESS, 
                  enable_thumb: bool=True,
-                 user_sel: int=1):
+                 skip_addrs: list[int]=None):
         """
         :param binary: the binary to examine
         :param BINARY_ADDRESS: the address where the binary should be loaded
@@ -57,6 +56,7 @@ class FIEngine():
         :param RW_ADDRESS: the IO address
         :param FAULT_ADDRESS: the address that should be written to in the event of a successful fault
         :param enable_thumb: whether or not to run as ARMv6 Thumb
+        :param skip_addrs: a list of addresses to skip, if ran into at or after fault_index.  None to do skip at the exact address
         """
         self.thumb = enable_thumb
         if self.thumb:
@@ -79,14 +79,7 @@ class FIEngine():
         self.FAULT_ADDRESS = FAULT_ADDRESS
         self.is_done = False
         self.logger = logging.getLogger(__name__)
-
-        self.SKIP_ADDRS = PreProcessing(
-            binary,
-            user_sel,
-            start_addr=self.BINARY_ADDRESS,
-            thumb=self.thumb
-        ).instructions
-        # print(self.SKIP_ADDRS)
+        self.skip_addrs = skip_addrs
 
     def _init_emulator(self, index):
         # reset emulator
@@ -144,22 +137,26 @@ class FIEngine():
 
     def _instr_hook(self, mu, address, size, user_data):
         self._instruction_count += 1
+        # check _skip_cycle to prevent skipping multiple times
+        if self._skip_cycle is None and self._instruction_count >= self._skip_index:
+            # we can now start skipping instructions, if they fit the criteria
+            if self.skip_addrs is None or (address & ~1) in self.skip_addrs:
+                # brute force or at the index we should skip
+                decoded = list(self.md.disasm(mu.mem_read(address, size), address))
 
-        if address == self._skip_index:
-            decoded = list(self.md.disasm(mu.mem_read(address, size), address))
-
-            if not decoded:
-                self.logger.error("Could not decode the instruction to be skipped")
-                mu.emu_stop()
-            else:
-                self._decoded = decoded
-                self.logger.info(
-                    f"Skipping 0x{address:x}: {self._decoded[0].mnemonic} "
-                    f"{self._decoded[0].op_str} at runtime cycle {self._skip_cycle}."
-                    f"{self._instruction_count}"
-                )
-                self._skip_cycle = self._instruction_count
-                mu.reg_write(PC, (address + size) | (1 if self.thumb else 0))
+                if not decoded:
+                    self.logger.error("Could not decode the instruction to be skipped")
+                    # shouldn't happen with our configuration
+                    mu.emu_stop()
+                else:
+                    self._skip_cycle = self._instruction_count
+                    self._skip_addr = address & ~1
+                    self._decoded = decoded
+                    self.logger.info(
+                        f"Skipping 0x{address:x}: {self._decoded[0].mnemonic} "
+                        f"{self._decoded[0].op_str} at runtime cycle {self._skip_cycle}."
+                    )
+                    mu.reg_write(PC, (address + size) | (1 if self.thumb else 0))
 
 
     def _exit_hook(self, mu, access, address, size, value, user_data) -> bool:
@@ -205,11 +202,10 @@ class FIEngine():
         elif access == UC_MEM_WRITE_UNMAPPED:
             self.logger.debug(f"Write to unmapped address: {hex(address)}")
 
-    def run(self, fault_index: int=None, skip_addrs: list[int]=None, max_iter: int=100) -> tuple:
+    def run(self, fault_index: int=None, max_iter: int=100) -> tuple:
         """
         Runs the binary with an optional fault index
         :param fault_index: the instruction to fault (0 being the first instruction in the binary)
-        :param skip_addrs: a list of addresses to skip, if ran into at or after fault_index
         :param max_iter: the max number of iterations to run the program for.  Set to 0 to run until exit
         """
         self.logger.info("Starting the emulation")
@@ -234,7 +230,7 @@ class FIEngine():
                     pass
                 self.logger.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")                
         # if we exit without hittinig the glitch index, then there is no more to do
-        self.is_done = self._skip_index > self._instruction_count
+        self.is_done = (self._skip_cycle is None) or (self._skip_index > self._instruction_count)
 
         if self.exit_code is None:
             self.logger.debug("Program did not exit (emulation stopped before program exit).")
@@ -249,12 +245,14 @@ class FIEngine():
         final_registers['PC'] = self.mu.reg_read(PC)
         return (
             self._decoded,
+            self._skip_addr,
             self.output,
             self.exit_code,
             final_registers,
             self._pc_control,
             self.trigger,
             self._skip_cycle,
+            (self._skip_cycle + 1) if self._skip_cycle else None
         )
         # print registers
         # self.logger.info("Emulation done. Below is the CPU context")
