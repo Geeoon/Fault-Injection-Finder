@@ -88,9 +88,16 @@ class FaultInjectionFinder():
                 break  # continue?
             skipped_instruction, skipped_addr, res_output, res_exit, res_regs, pc_control, trigger, fault_cycle, next_index = res
             index = next_index
-            
-            if res_exit is None and not pc_control and not trigger:
-                continue  # it didn't result in anything cool
+
+            # check if we got any actual results
+            nothing_set = self.expected_exit is None and self.expected_output is None
+            conditions_pass = (
+                (self.expected_exit is None or self.expected_exit == res_exit) and
+                (self.expected_output is None or self.expected_output in res_output)
+            )
+
+            if (nothing_set or not conditions_pass) and not pc_control and not trigger:
+                continue
             good_input = None
             if pc_control:
                 if self.desired_pc is not None:
