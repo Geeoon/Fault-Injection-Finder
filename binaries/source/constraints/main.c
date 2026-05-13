@@ -5,6 +5,8 @@ extern int _write(int fd, char* buf, int len);
 extern void pwned(void);
 
 int main() {
+    volatile int dummy = 0;
+    if (dummy) pwned(); 
     uint8_t input;
     _read(0, &input, 1);
     
@@ -17,7 +19,5 @@ int main() {
     } else {
         _write(0, "3", 1);
     }
-    volatile int dummy = 0;
-    if (dummy) pwned(); 
     return 0;
 }

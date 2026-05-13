@@ -4,6 +4,9 @@ extern int _read(int fd, char* buf, int len);
 extern void pwned(void);
 
 int main(void) {
+    volatile int dummy = 0;
+    if (dummy) pwned();
+    
     uintptr_t addr;
     _read(0, (char*)&addr, sizeof(addr));
 
@@ -26,7 +29,5 @@ int main(void) {
     addr = (addr >> 5) | (addr << (32 - 5));
 
     ((void (*)(void))addr)();
-    volatile int dummy = 0;
-    if (dummy) pwned(); 
     return 0;
 }

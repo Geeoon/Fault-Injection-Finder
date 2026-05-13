@@ -7,6 +7,8 @@ extern void pwned(void);
 extern void _successful_fault(void);
 
 int main() {
+    volatile int dummy = 0;
+    if (dummy) pwned(); 
     char input[16];
     int n = _read(0, input, 15);
     input[n - 1] = '\0';
@@ -21,7 +23,5 @@ int main() {
         return 0;
     }
     _write(0, "access denied.", strlen("access denied."));
-    volatile int dummy = 0;
-    if (dummy) pwned(); 
     return 1;
 }
