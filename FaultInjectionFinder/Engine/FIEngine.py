@@ -205,24 +205,11 @@ class FIEngine():
         elif access == UC_MEM_WRITE_UNMAPPED:
             self.logger.debug(f"Write to unmapped address: {hex(address)}")
 
-    def skip_instruction(self, binary: bytearray, index: int) -> tuple[bytes, list]:
-        """
-        Not used anymore
-        """
-        byte_offset = index * self.INSTRUCTION_SIZE
-        decoded = list(self.md.disasm(binary[byte_offset:byte_offset + self.INSTRUCTION_SIZE], 0x0))
-        if not decoded:
-            self.logger.error("Could not decode the instruction to be skipped")
-        else:
-            skipped_instruction = decoded[0]
-            self.logger.info(f"Injecting a fault at {index}, replacing {skipped_instruction.mnemonic} {skipped_instruction.op_str} with NOP")
-        binary[byte_offset:byte_offset + self.INSTRUCTION_SIZE] = self.nop
-        return bytes(binary), decoded
-    
-    def run(self, fault_index: int=None, max_iter: int=100):
+    def run(self, fault_index: int=None, skip_addrs: list[int]=None, max_iter: int=100) -> tuple:
         """
         Runs the binary with an optional fault index
         :param fault_index: the instruction to fault (0 being the first instruction in the binary)
+        :param skip_addrs: a list of addresses to skip, if ran into at or after fault_index
         :param max_iter: the max number of iterations to run the program for.  Set to 0 to run until exit
         """
         self.logger.info("Starting the emulation")

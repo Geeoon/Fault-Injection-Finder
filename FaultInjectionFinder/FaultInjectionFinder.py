@@ -70,6 +70,9 @@ class FaultInjectionFinder():
         skip_targets = self.engine.SKIP_ADDRS
         logging.info(f"Found {len(skip_targets)} vulnerable instructions to try.")
 
+        print(list(map(lambda target: target["address"], skip_targets)))
+        res = self.engine.run(list(map(lambda target: target["address"], skip_targets)), max_iter=self.max_iter)
+
         for target in skip_targets:
             index = target["address"]   # index is the target instruction address
             # print(f'Testing fault at 0x{index:x}: {target["mnemonic"]} {target["op_str"]}',flush=True)
