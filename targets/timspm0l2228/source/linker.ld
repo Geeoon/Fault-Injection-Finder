@@ -32,19 +32,14 @@
 
 *****************************************************************************/
 -uinterruptVectors
---stack_size=256
+--stack_size=0x800
 
-#define FLASH_BASE 0x6000
+#define FLASH_BASE 0x0
 
 MEMORY
 {
-    BOOTLOADER      (RX)  : origin = 0x00000000, length = 0x00006000 /* Bootloader flash - unusable */
-    FLASH           (RX)  : origin = 0x00006000, length = 0x00034000 /* Location of team firmware */
-    FAT             (RW)  : origin = 0x0003A000, length = 0x00000400 /* Used to store tag, length, pointer values for files */
-    APP2            (RX)  : origin = 0x0003A400, length = 0x00005c00 /* Location of team firmware */
+    FLASH           (RX)  : origin = 0x00000000, length = 0x00040000
     SRAM            (RWX) : origin = 0x20200000, length = 0x00008000
-    BCR_CONFIG      (R)   : origin = 0x41C00000, length = 0x000000FF
-    BSL_CONFIG      (R)   : origin = 0x41C00100, length = 0x00000080
 }
 
 SECTIONS
@@ -67,7 +62,4 @@ SECTIONS
     .bss    :   > SRAM
     .sysmem :   > SRAM
     .stack  :   > SRAM (HIGH)
-
-    .BCRConfig  : {} > BCR_CONFIG
-    .BSLConfig  : {} > BSL_CONFIG
 }

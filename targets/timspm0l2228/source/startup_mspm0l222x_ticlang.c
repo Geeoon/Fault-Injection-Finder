@@ -78,6 +78,8 @@ extern void LCD_IRQHandler      (void) __attribute__((weak, alias("Default_Handl
 extern void LFSS_IRQHandler     (void) __attribute__((weak, alias("Default_Handler")));
 extern void DMA_IRQHandler      (void) __attribute__((weak, alias("Default_Handler")));
 
+extern int main(void);
+
 /* Interrupt vector table.  Note that the proper constructs must be placed on this to */
 /* ensure that it ends up at physical address 0x0000.0000 or at the start of          */
 /* the program if located at a start address other than 0.                            */
@@ -153,9 +155,11 @@ void (*const interruptVectors[])(void) =
 void Reset_Handler(void)
 {
     /* Jump to the ticlang C Initialization Routine. */
-    __asm(
-        "    .global _c_int00\n"
-        "    b       _c_int00");
+    main();
+    while (1) ;
+    // __asm(
+    //     "    .global _c_int00\n"
+    //     "    b       _c_int00");
 }
 
 /* This is the code that gets called when the processor receives an unexpected  */
