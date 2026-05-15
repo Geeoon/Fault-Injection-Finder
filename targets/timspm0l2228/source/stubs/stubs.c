@@ -5,8 +5,8 @@
 #include <ti/driverlib/m0p/dl_core.h>
 
 
-#define STATUS_LED_ON(void) DL_GPIO_setPins(LEDS_PORT, LEDS_STATUS_LED_PIN)
-#define STATUS_LED_OFF(void) DL_GPIO_clearPins(LEDS_PORT, LEDS_STATUS_LED_PIN)
+#define STATUS_LED_ON() DL_GPIO_setPins(LEDS_PORT, LEDS_STATUS_LED_PIN)
+#define STATUS_LED_OFF() DL_GPIO_clearPins(LEDS_PORT, LEDS_STATUS_LED_PIN)
 
 #define LEDS_PORT                                                        (GPIOB)
 #define LEDS_STATUS_LED_PIN                                     (DL_GPIO_PIN_14)
@@ -24,7 +24,7 @@ void init_device(void) {
     DL_UART_Config config = {
         .mode = DL_UART_MODE_NORMAL,
         .direction = DL_UART_DIRECTION_TX_RX,
-        .flowControl = DL_UART_FLOW_CONTROL_RTS_CTS,
+        .flowControl = DL_UART_FLOW_CONTROL_NONE,
         .parity = DL_UART_PARITY_NONE,
         .wordLength = DL_UART_WORD_LENGTH_8_BITS,
         .stopBits = DL_UART_STOP_BITS_ONE
@@ -67,17 +67,17 @@ void _exit(int status) {
 }
 
 int _read(int fd, char *buf, int len) {
+    // TODO: read from UART0
+    return len;
+}
+
+int _write(int fd, char *buf, int len) {
     for (int i = 0; i < len; i++) {
         // turn on LED while transmitting
         // STATUS_LED_ON();
         DL_UART_transmitDataBlocking(UART_ADDR, buf[i]);
         // STATUS_LED_OFF();
     }
-    return len;
-}
-
-int _write(int fd, char *buf, int len) {
-    // TODO: write to UART0
     return len;
 }
 

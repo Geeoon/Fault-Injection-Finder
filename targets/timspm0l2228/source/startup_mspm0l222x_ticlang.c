@@ -155,11 +155,9 @@ void (*const interruptVectors[])(void) =
 void Reset_Handler(void)
 {
     /* Jump to the ticlang C Initialization Routine. */
-    main();
-    while (1) ;
-    // __asm(
-    //     "    .global _c_int00\n"
-    //     "    b       _c_int00");
+    __asm(
+        "    .global _c_int00\n"
+        "    b       _c_int00");
 }
 
 /* This is the code that gets called when the processor receives an unexpected  */
