@@ -4,14 +4,6 @@
 #include <ti/driverlib/driverlib.h>
 #include <ti/driverlib/m0p/dl_core.h>
 
-
-#define STATUS_LED_ON() DL_GPIO_setPins(LEDS_PORT, LEDS_STATUS_LED_PIN)
-#define STATUS_LED_OFF() DL_GPIO_clearPins(LEDS_PORT, LEDS_STATUS_LED_PIN)
-
-#define LEDS_PORT                                                        (GPIOB)
-#define LEDS_STATUS_LED_PIN                                     (DL_GPIO_PIN_14)
-#define LEDS_STATUS_LED_IOMUX                                    (IOMUX_PINCM35)
-
 #define POWER_STARTUP_DELAY             (16)
 #define CPUCLK_FREQ                     32000000
 
@@ -54,12 +46,6 @@ void init_device(void) {
 
     // UART enable
     DL_UART_enable(UART_ADDR);
-
-    // enable LEDs
-    DL_GPIO_initDigitalOutput(LEDS_STATUS_LED_IOMUX);
-    DL_GPIO_setPins(GPIOB, LEDS_STATUS_LED_PIN);
-    DL_GPIO_enableOutput(GPIOB, LEDS_STATUS_LED_PIN);
-    STATUS_LED_ON();
 }
 
 void _exit(int status) {
@@ -67,16 +53,15 @@ void _exit(int status) {
 }
 
 int _read(int fd, char *buf, int len) {
-    // TODO: read from UART0
+    for (int i = 0; i < len; i++) {
+        buf[i] = (char)DL_UART_receiveDataBlocking(UART_ADDR);
+    }
     return len;
 }
 
 int _write(int fd, char *buf, int len) {
     for (int i = 0; i < len; i++) {
-        // turn on LED while transmitting
-        // STATUS_LED_ON();
         DL_UART_transmitDataBlocking(UART_ADDR, buf[i]);
-        // STATUS_LED_OFF();
     }
     return len;
 }
