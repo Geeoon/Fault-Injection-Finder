@@ -4,6 +4,7 @@
 #define EXIT_ADDR (int*)0x3000000
 #define RW_ADDR (char*)0x3001000
 #define FAULT_ADDR (int*)0x3002000
+#define TRIGGER_ADDR (int*)0x3003000
 
 // unicorn hooks
 void _exit(int status) {
@@ -24,6 +25,11 @@ int _write(int fd, char *buf, int len) {
 // notify unicorn of a successful fault
 void _successful_fault(void) {
     *FAULT_ADDR = 0;
+}
+
+// notify unicorn of trigger
+void _trigger(void) {
+    *TRIGGER_ADDR = 0;
 }
 
 void _fini(void) {}

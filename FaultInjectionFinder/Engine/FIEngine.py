@@ -16,6 +16,7 @@ DEFAULT_RAM_SIZE = 0x10000
 DEFAULT_EXIT_ADDRESS = 0x3000000
 DEFAULT_RW_ADDRESS = 0x3001000
 DEFAULT_FAULT_ADDRESS = 0x3002000
+DEFAULT_TRIGGER_ADDRESS = 0x3003000
 
 class InvalidFetch(Exception):
     """
@@ -43,7 +44,8 @@ class FIEngine():
                  RAM_SIZE: int=DEFAULT_RAM_SIZE,
                  EXIT_ADDRESS: int=DEFAULT_EXIT_ADDRESS,
                  RW_ADDRESS: int=DEFAULT_RW_ADDRESS,
-                 FAULT_ADDRESS: int=DEFAULT_FAULT_ADDRESS, 
+                 FAULT_ADDRESS: int=DEFAULT_FAULT_ADDRESS,
+                 TRIGGER_ADDRESS: int=DEFAULT_TRIGGER_ADDRESS,
                  enable_thumb: bool=True,
                  skip_addrs: list[int]=None,
                  addr_range: tuple[int, int]=None):
@@ -56,6 +58,7 @@ class FIEngine():
         :param EXIT_ADDRESS: the address that should be written for an exit
         :param RW_ADDRESS: the IO address
         :param FAULT_ADDRESS: the address that should be written to in the event of a successful fault
+        :param TRIGGER_ADDRESS: the address that should be written to to signify a trigger
         :param enable_thumb: whether or not to run as ARMv6 Thumb
         :param skip_addrs: a list of addresses to skip, if ran into at or after fault_index.  None to do skip at the exact address
         """
@@ -78,6 +81,7 @@ class FIEngine():
         self.EXIT_ADDRESS = EXIT_ADDRESS
         self.RW_ADDRESS = RW_ADDRESS
         self.FAULT_ADDRESS = FAULT_ADDRESS
+        self.TRIGGER_ADDRESS = TRIGGER_ADDRESS
         self.is_done = False
         self.logger = logging.getLogger(__name__)
         self.skip_addrs = skip_addrs
@@ -100,6 +104,7 @@ class FIEngine():
         self._skip_cycle = None           # runtime cycle when address was hit
         self._instruction_count = 0
         self.manual = False
+        self.triggers = []
 
 
         # write the binary to memory
@@ -119,9 +124,11 @@ class FIEngine():
         self.mu.mem_map(self.EXIT_ADDRESS, 0x1000, UC_PROT_WRITE)  # add exit hook to memory map
         self.mu.mem_map(self.RW_ADDRESS, 0x1000, UC_PROT_READ | UC_PROT_WRITE)  # add IO hook to memory map
         self.mu.mem_map(self.FAULT_ADDRESS, 0x1000, UC_PROT_WRITE)  # fault hook to memory map
+        self.mu.mem_map(self.TRIGGER_ADDRESS, 0x1000, UC_PROT_WRITE)  # trigger hook to memory map
         self.mu.hook_add(UC_HOOK_MEM_WRITE, self._exit_hook, begin=self.EXIT_ADDRESS, end=self.EXIT_ADDRESS + 0x4)  # add hook for exit
         self.mu.hook_add(UC_HOOK_MEM_READ | UC_HOOK_MEM_WRITE, self._rw_hook, begin=self.RW_ADDRESS, end=self.RW_ADDRESS)  # add hook for IO read/write
         self.mu.hook_add(UC_HOOK_MEM_WRITE, self._fault_hook, begin=self.FAULT_ADDRESS, end=self.FAULT_ADDRESS + 0x4)  # add hook for fault detection
+        self.mu.hook_add(UC_HOOK_MEM_WRITE, self._trigger_hook, begin=self.TRIGGER_ADDRESS, end=self.TRIGGER_ADDRESS + 0x4)  # add hook for trigger
         self.mu.hook_add(UC_HOOK_MEM_INVALID, self._mem_invalid_hook)
         self.mu.hook_add(UC_HOOK_CODE, self._instr_hook)  # hook for every instruction, this is the bottleneck for speed
 
@@ -186,7 +193,10 @@ class FIEngine():
     def _fault_hook(self, mu, access, address, size, value, user_data) -> bool:
         self.manual = True
         mu.emu_stop()
-    
+
+    def _trigger_hook(self, mu, access, address, size, value, user_data) -> bool:
+        self.triggers.append(self._instruction_count)
+
     def _mem_invalid_hook(self, mu, access, address, size, value, user_data) -> bool:
         if access == UC_MEM_FETCH_UNMAPPED:
             self.logger.debug(f"Fetch from unmapped address: {hex(address)}")
@@ -254,7 +264,8 @@ class FIEngine():
             self._pc_control,
             self.manual,
             self._skip_cycle,
-            (self._skip_cycle + 1) if self._skip_cycle else None
+            (self._skip_cycle + 1) if self._skip_cycle else None,
+            self.triggers
         )
         # print registers
         # self.logger.info("Emulation done. Below is the CPU context")

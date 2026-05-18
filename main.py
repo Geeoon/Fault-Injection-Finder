@@ -5,6 +5,15 @@ from pathlib import Path
 from FaultInjectionFinder import FaultInjectionFinder
 from FaultInjectionFinder.Engine.FIEngine import DEFAULT_BINARY_ADDRESS
 
+def get_ordinal(n):
+    # Handle teen exceptions (11, 12, 13)
+    if 11 <= (n % 100) <= 13:
+        suffix = 'th'
+    else:
+        # Use modulo 10 to get the last digit
+        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+    return f"{n}{suffix}"
+
 def nonnegative_int(value):
     n = int(value)  # raises ValueError if not an int
     if n < 0:
@@ -35,14 +44,14 @@ def hex_or_dec(value):
 parser = argparse.ArgumentParser(description="Automatically finds hardware security vulnerabilities in binaries.  Only support ARM.")
 parser.add_argument("binary_path", type=existing_path, help="The binary to examine")
 parser.add_argument("input_path", type=existing_path, help="The path to the input to the program")
-parser.add_argument("-s", "--simulate", type=nonnegative_int, metavar="INDEX", default=None, help="Runs a Unicorn simulation with the fault at a clock cycle.  Ignores all other flags besides --max_iterations and --verbose.")
+parser.add_argument("-s", "--simulate", type=nonnegative_int, metavar="INDEX", default=None, help="Runs a Unicorn simulation with the fault at an nth instruction issue.  Ignores all other flags besides --max_iterations and --verbose.")
 parser.add_argument("-i", "--max-iterations", type=nonnegative_int, default=10000, help="The maximum number of instructions to run in the binary before ending early")
 parser.add_argument("-o", "--expected-output", type=existing_path, default=None, help="The expected output of the program on a successful security incident")
 parser.add_argument("-e", "--expected-exit", type=int, default=None, help="The expected exit of the program on a successful security incident")
 parser.add_argument("-d", "--desired-pc", type=hex_or_dec, default=None, help="The program counter we desire to achieve if possible.  In hex or decimal.  Keep in mind that this is the absolute address, not relative to the binary.")
 parser.add_argument("-v", "--verbose", action="count", default=0, help="Verbosity: warning, info, debug")
 parser.add_argument("-n", "--no-thumb", action="store_true", default=False, help="Whether or not to run in thumb mode")
-parser.add_argument("-t", "--types", type=int, default=1, help="Which types of instructions to focus on.  0) Brute force: every clock cycle.  1) Recommended defaults.  2) Only conditional branches.  3) Only compare/tests.  4) Only returns.  5) Only branches, calls, returns, and compares")
+parser.add_argument("-t", "--types", type=int, default=1, help="Which types of instructions to focus on.  0) Brute force: every issue.  1) Recommended defaults.  2) Only conditional branches.  3) Only compare/tests.  4) Only returns.  5) Only branches, calls, returns, and compares")
 parser.add_argument("-b", "--binary-addr", type=hex_or_dec, default=DEFAULT_BINARY_ADDRESS, help=f"The address to flash the binary to.  Defaults to {hex(DEFAULT_BINARY_ADDRESS)}.  Can be in hex or decimal.")
 parser.add_argument("-u", "--output-dir", type=existing_dir, default=None, help="The directory to store faults that were found.")
 parser.add_argument("-f", "--begin-addr", type=hex_or_dec, default=None, help="The starting address of the instructions that should be considered for skipping.  (inclusive.)  If set, -g must also be set.")
@@ -105,11 +114,13 @@ if args.simulate is not None:
     quit()
 
 for fault in finder.find_faults():
-    i, fault_cycle, insns, output, exit_code, regs, pc_control, manual, input_to_pc = fault
+    i, fault_cycle, insns, output, exit_code, regs, pc_control, manual, input_to_pc, triggers = fault
 
     print("=" * 50)
     print(f"Fault target address: 0x{i:x}")
-    print(f"Fault cycle estimate: {fault_cycle}")
+    print(f"Fault instruction issue # estimate: {fault_cycle}")
+    if triggers:
+        print(f"{triggers[-1] - fault_cycle} instruction issues after the {get_ordinal(len(triggers))} trigger")
     print("\nInstruction(s):")
     for insn in insns:
         print(f"  0x{insn.address:x}: {insn.mnemonic} {insn.op_str}")
