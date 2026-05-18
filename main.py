@@ -176,6 +176,10 @@ for fault in finder.find_faults():
 # ./binaries/constraints.bin ./inputs/constraints.bin -d 0x10000b0
 # finder = FaultInjectionFinder('./binaries/constraints.bin', input=b'a', desired_pc=DEFAULT_BINARY_ADDRESS + 0xb0)
 
+# ./binaries/md5.bin ./inputs/md5.bin -d 0x10000f0
+# ./binaries/chacha20.bin ./inputs/chacha20.bin -d 0x10000f0
+
+
 # simulate faults
 # pc_test.bin
 # res = finder.simulate_fault(b'}\x00\x00\x01', index=36)
