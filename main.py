@@ -113,7 +113,9 @@ if args.simulate is not None:
 
     quit()
 
-for fault in finder.find_faults():
+faults = finder.find_faults()
+print(f"Found {len(faults)} faults.")
+for fault in faults:
     i, fault_cycle, insns, output, exit_code, regs, pc_control, manual, input_to_pc, triggers = fault
 
     print("=" * 50)
