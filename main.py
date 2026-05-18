@@ -177,7 +177,7 @@ for fault in finder.find_faults():
 # finder = FaultInjectionFinder('./binaries/constraints.bin', input=b'a', desired_pc=DEFAULT_BINARY_ADDRESS + 0xb0)
 
 # ./binaries/md5.bin ./inputs/md5.bin -d 0x10000f0
-# ./binaries/chacha20.bin ./inputs/chacha20.bin -d 0x10000f0
+# ./binaries/chacha20.bin ./inputs/chacha20.bin -d 0x1002ee8
 
 
 # simulate faults

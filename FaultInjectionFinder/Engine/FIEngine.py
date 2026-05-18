@@ -245,7 +245,9 @@ class FIEngine():
                 self.logger.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")                
         # if we exit without hittinig the glitch index, then there is no more to do
         self.is_done = (self._skip_cycle is None) or (self._skip_index > self._instruction_count)
-
+        if self.is_done:
+            self.logger.info("Ran without encountering an instruction to fault, this indicates the end of the search.")
+            return None
         if self.exit_code is None:
             self.logger.debug("Program did not exit (emulation stopped before program exit).")
         if not self._decoded:

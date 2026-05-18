@@ -49,18 +49,19 @@ class FaultInjectionFinder():
         self.user_sel = user_sel
         self.binary_addr = binary_addr
         self.addr_range = addr_range
+        self.logger = logging.getLogger(__name__)
 
         try:
             with open(binary_path, 'rb') as file:
                 self.binary = file.read()
         except Exception as e:
-            logging.critical(f"Failed to load the binary into the FIEngine: {str(e)}")
+            self.logger.critical(f"Failed to load the binary into the FIEngine: {str(e)}")
             raise e
 
     def find_faults(self) -> list:
         skip_targets = None
         if self.user_sel:
-            logging.info("Performing pre-processing...")
+            self.logger.info("Performing pre-processing...")
             # PreProcessing returns vulnerable instruction addresses.
             skip_targets = PreProcessing(
                 binary=self.binary,
@@ -68,7 +69,10 @@ class FaultInjectionFinder():
                 start_addr=self.binary_addr,
                 thumb=self.thumb
             ).instructions
-            logging.info(f"Found {len(skip_targets)} vulnerable instructions to try.")
+            self.logger.info(f"Found {len(skip_targets)} vulnerable instructions to try.")
+            if len(skip_targets) == 0:
+                self.logger.critical("No instructions to be skipped.  Try with differnt instruction types.")
+                return ()
 
         self.engine = FIEngine(
             binary=self.binary,
@@ -78,7 +82,7 @@ class FaultInjectionFinder():
             skip_addrs=list(map(lambda target: target["address"] & ~1, skip_targets)) if skip_targets else None,
             addr_range=self.addr_range
         )
-        logging.info("Searching for faults...")
+        self.logger.info("Searching for faults...")
         successes = []
 
         index = 0
@@ -122,7 +126,7 @@ class FaultInjectionFinder():
                 good_input,
                 triggers
             ))
-        logging.info("Done searching for faults.")
+        self.logger.info("Done searching for faults.")
         return successes
 
     def simulate_fault(self, real_input: bytes, index: int) -> tuple[bytes, int, bool]:
@@ -132,7 +136,7 @@ class FaultInjectionFinder():
         :return: the output of the program, exit code, manual?
         """
         self.engine = FIEngine(binary=self.binary, input=real_input, enable_thumb=self.thumb, BINARY_ADDRESS=self.binary_addr)
-        logging.info("Simulating the fault...")
+        self.logger.info("Simulating the fault...")
         skipped_instruction, skipped_addr, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index, triggers = self.engine.run(index, max_iter=self.max_iter)        
-        logging.info("Simulation finished")
+        self.logger.info("Simulation finished")
         return res_output, res_exit, manual
