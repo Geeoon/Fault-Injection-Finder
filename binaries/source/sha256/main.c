@@ -5,6 +5,7 @@ extern int _read(int fd, char* buf, int len);
 extern int _write(int fd, char* buf, int len);
 extern void pwned(void);
 extern void _successful_fault(void);
+extern void _trigger(void);
 
 int main() {
     volatile int dummy = 0;
@@ -16,6 +17,7 @@ int main() {
     char test_hash[32];
 
     sha256_easy_hash(input, strlen(input), test_hash);
+    _trigger();
 
     if (memcmp(test_hash, real_hash, 32) == 0) {
         _write(0, "access granted.", strlen("access granted."));
