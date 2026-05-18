@@ -1,10 +1,10 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#define EXIT_ADDR (int*)0x3000000
-#define RW_ADDR (char*)0x3001000
-#define FAULT_ADDR (int*)0x3002000
-#define TRIGGER_ADDR (int*)0x3003000
+#define EXIT_ADDR    (volatile int*)0x3000000
+#define RW_ADDR      (volatile char*)0x3001000
+#define FAULT_ADDR   (volatile int*)0x3002000
+#define TRIGGER_ADDR (volatile int*)0x3003000
 
 // unicorn hooks
 void _exit(int status) {

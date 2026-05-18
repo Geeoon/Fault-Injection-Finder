@@ -120,7 +120,9 @@ for fault in finder.find_faults():
     print(f"Fault target address: 0x{i:x}")
     print(f"Fault instruction issue # estimate: {fault_cycle}")
     if triggers:
-        print(f"{triggers[-1] - fault_cycle} instruction issues after the {get_ordinal(len(triggers))} trigger")
+        result = max((num for num in triggers if num < fault_cycle), default=None)
+        if result is not None:
+            print(f"{fault_cycle - result} instruction issues after the {get_ordinal(len(triggers))} trigger")
     print("\nInstruction(s):")
     for insn in insns:
         print(f"  0x{insn.address:x}: {insn.mnemonic} {insn.op_str}")

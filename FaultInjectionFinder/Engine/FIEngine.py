@@ -191,11 +191,13 @@ class FIEngine():
         return True
     
     def _fault_hook(self, mu, access, address, size, value, user_data) -> bool:
+        logging.debug("Hit manual fault.")
         self.manual = True
         mu.emu_stop()
 
     def _trigger_hook(self, mu, access, address, size, value, user_data) -> bool:
         self.triggers.append(self._instruction_count)
+        logging.debug("Hit trigger.")
 
     def _mem_invalid_hook(self, mu, access, address, size, value, user_data) -> bool:
         if access == UC_MEM_FETCH_UNMAPPED:
