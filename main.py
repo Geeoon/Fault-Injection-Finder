@@ -91,7 +91,7 @@ finder = FaultInjectionFinder(binary_path=args.binary_path,
 
 if args.simulate is not None:
     # only simulate
-    out, exit, trigger = finder.simulate_fault(bin_in, index=args.simulate)
+    out, exit, manual = finder.simulate_fault(bin_in, index=args.simulate)
 
     print("\nExit Code:")
     print(f"  {exit}")
@@ -99,13 +99,13 @@ if args.simulate is not None:
     print("\nOutput:")
     print(f"  {out!r}")
 
-    if trigger:
+    if manual:
         print("Fault was manually triggered")
 
     quit()
 
 for fault in finder.find_faults():
-    i, fault_cycle, insns, output, exit_code, regs, pc_control, trigger, input_to_pc = fault
+    i, fault_cycle, insns, output, exit_code, regs, pc_control, manual, input_to_pc = fault
 
     print("=" * 50)
     print(f"Fault target address: 0x{i:x}")
@@ -113,7 +113,7 @@ for fault in finder.find_faults():
     print("\nInstruction(s):")
     for insn in insns:
         print(f"  0x{insn.address:x}: {insn.mnemonic} {insn.op_str}")
-    if trigger:
+    if manual:
         print("Fault was manually triggered")
 
     print("\nExit Code:")

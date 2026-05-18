@@ -86,7 +86,7 @@ class FaultInjectionFinder():
             res = self.engine.run(fault_index=index, max_iter=self.max_iter)
             if not res:
                 break  # continue?
-            skipped_instruction, skipped_addr, res_output, res_exit, res_regs, pc_control, trigger, fault_cycle, next_index = res
+            skipped_instruction, skipped_addr, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index = res
             index = next_index
 
             # check if we got any actual results
@@ -96,7 +96,7 @@ class FaultInjectionFinder():
                 (self.expected_output is None or self.expected_output in res_output)
             )
 
-            if (nothing_set or not conditions_pass) and not pc_control and not trigger:
+            if (nothing_set or not conditions_pass) and not pc_control and not manual:
                 continue
             good_input = None
             if pc_control:
@@ -118,7 +118,7 @@ class FaultInjectionFinder():
                 res_exit,
                 res_regs,
                 pc_control,
-                trigger,
+                manual,
                 good_input
             ))
         logging.info("Done searching for faults.")
@@ -128,10 +128,10 @@ class FaultInjectionFinder():
         """
         :param real_input: the input to actually give the program
         :param index: the clock cycle of the fault
-        :return: the output of the program, exit code, triggered?
+        :return: the output of the program, exit code, manual?
         """
         self.engine = FIEngine(binary=self.binary, input=real_input, enable_thumb=self.thumb, BINARY_ADDRESS=self.binary_addr)
         logging.info("Simulating the fault...")
-        skipped_instruction, skipped_addr, res_output, res_exit, res_regs, pc_control, trigger, fault_cycle, next_index = self.engine.run(index, max_iter=self.max_iter)        
+        skipped_instruction, skipped_addr, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index = self.engine.run(index, max_iter=self.max_iter)        
         logging.info("Simulation finished")
-        return res_output, res_exit, trigger
+        return res_output, res_exit, manual

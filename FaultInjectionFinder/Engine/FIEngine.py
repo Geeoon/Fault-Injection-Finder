@@ -99,7 +99,7 @@ class FIEngine():
         self._skip_index = index
         self._skip_cycle = None           # runtime cycle when address was hit
         self._instruction_count = 0
-        self.trigger = False
+        self.manual = False
 
 
         # write the binary to memory
@@ -184,7 +184,7 @@ class FIEngine():
         return True
     
     def _fault_hook(self, mu, access, address, size, value, user_data) -> bool:
-        self.trigger = True
+        self.manual = True
         mu.emu_stop()
     
     def _mem_invalid_hook(self, mu, access, address, size, value, user_data) -> bool:
@@ -252,7 +252,7 @@ class FIEngine():
             self.exit_code,
             final_registers,
             self._pc_control,
-            self.trigger,
+            self.manual,
             self._skip_cycle,
             (self._skip_cycle + 1) if self._skip_cycle else None
         )
