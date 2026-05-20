@@ -196,7 +196,7 @@ class FIEngine():
         mu.emu_stop()
 
     def _trigger_hook(self, mu, access, address, size, value, user_data) -> bool:
-        self.triggers.append(self._instruction_count)
+        self.triggers.append((self._instruction_count, self.mu.reg_read(PC)))
         logging.debug("Hit trigger.")
 
     def _mem_invalid_hook(self, mu, access, address, size, value, user_data) -> bool:

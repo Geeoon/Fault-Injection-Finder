@@ -1,7 +1,6 @@
 #include <stdint.h>
+#include "stubs.h"
 
-extern int _read(int fd, char* buf, int len);
-extern int _write(int fd, char* buf, int len);
 extern void pwned(void);
 
 int main() {

@@ -1,10 +1,7 @@
+#include "stubs.h"
+
 #include <sys/stat.h>
 #include <errno.h>
-
-#define EXIT_ADDR    (volatile int*)0x3000000
-#define RW_ADDR      (volatile char*)0x3001000
-#define FAULT_ADDR   (volatile int*)0x3002000
-#define TRIGGER_ADDR (volatile int*)0x3003000
 
 // unicorn hooks
 void _exit(int status) {
@@ -20,16 +17,6 @@ int _read(int fd, char *buf, int len) {
 int _write(int fd, char *buf, int len) {
     for (int i = 0; i < len; i++) *RW_ADDR = buf[i];
     return len;
-}
-
-// notify unicorn of a successful fault
-void _successful_fault(void) {
-    *FAULT_ADDR = 0;
-}
-
-// notify unicorn of trigger
-void _trigger(void) {
-    *TRIGGER_ADDR = 0;
 }
 
 void _fini(void) {}

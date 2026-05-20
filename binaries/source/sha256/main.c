@@ -1,11 +1,8 @@
 #include "string.h"
 #include "sha256.h"
+#include "stubs.h"
 
-extern int _read(int fd, char* buf, int len);
-extern int _write(int fd, char* buf, int len);
 extern void pwned(void);
-extern void _successful_fault(void);
-extern void _trigger(void);
 
 int main() {
     volatile int dummy = 0;

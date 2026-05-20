@@ -120,11 +120,13 @@ for fault in faults:
 
     print("=" * 50)
     print(f"Fault target address: 0x{i:x}")
-    print(f"Fault instruction issue # estimate: {fault_cycle}")
+    print(f"Fault instruction issue #: {fault_cycle}")
     if triggers:
-        result = max((num for num in triggers if num < fault_cycle), default=None)
+        result = max((trigger for trigger in triggers if trigger[0] < fault_cycle), default=None)
         if result is not None:
-            print(f"{fault_cycle - result} instruction issues after the {get_ordinal(len(triggers))} trigger")
+            print(result)
+            print(f"{fault_cycle - result[0]} instruction issues after the {get_ordinal(len(triggers))} trigger")
+            print(f"Trigger address: 0x{result[1]:x}")
     print("\nInstruction(s):")
     for insn in insns:
         print(f"  0x{insn.address:x}: {insn.mnemonic} {insn.op_str}")

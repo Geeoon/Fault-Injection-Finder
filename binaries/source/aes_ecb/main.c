@@ -1,6 +1,6 @@
 #include "AES_256_ECB.h"
+#include "stubs.h"
 
-extern int _read(int fd, char* buf, int len);
 extern void pwned(void);
 
 int main(void) {

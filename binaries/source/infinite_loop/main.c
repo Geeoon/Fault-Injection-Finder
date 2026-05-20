@@ -1,6 +1,5 @@
 #include "string.h"
-
-extern int _write(int fd, char* buf, int len);
+#include "stubs.h"
 
 int main() {
     // prevents gcc from optimizing away the stuff aster the loop

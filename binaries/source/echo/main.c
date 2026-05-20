@@ -1,7 +1,5 @@
 #include "string.h"
-
-extern int _read(int fd, char* buf, int len);
-extern int _write(int fd, char* buf, int len);
+#include "stubs.h"
 
 int main() {
     char input;

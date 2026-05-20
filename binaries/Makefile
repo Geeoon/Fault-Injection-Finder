@@ -11,6 +11,7 @@ LDFLAGS += -Wl,--gc-sections
 LDFLAGS += -nostartfiles
 LDFLAGS += -T linkerfile.ld
 CFLAGS += -ffreestanding
+CFLAGS += -I./stubs
 # CFLAGS += -nostdlib
 # CFLAGS += --specs=nosys.specs
 # CFLAGS += -g2

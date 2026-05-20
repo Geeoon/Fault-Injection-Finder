@@ -1,9 +1,7 @@
 #include "string.h"
-
+#include "stubs.h"
 #define PASSWORD "password123"
 
-extern int _read(int fd, char* buf, int len);
-extern int _write(int fd, char* buf, int len);
 int main() {
     char input[100];
     do {
