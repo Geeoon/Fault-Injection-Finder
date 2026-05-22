@@ -124,7 +124,6 @@ for fault in faults:
     if triggers:
         result = max((trigger for trigger in triggers if trigger[0] < fault_cycle), default=None)
         if result is not None:
-            print(result)
             print(f"{fault_cycle - result[0]} instruction issues after the {get_ordinal(len(triggers))} trigger")
             print(f"Trigger address: 0x{result[1]:x}")
     print("\nInstruction(s):")

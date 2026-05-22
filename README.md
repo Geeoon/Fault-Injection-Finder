@@ -27,7 +27,17 @@ For triggers, we could do the following:
 
 # Notes
 `arm-none-eabi-objdump -D -b binary -m arm <binary> | less` to examine the raw binary as assembly
+
 `arm-none-eabi-objdump -D -b binary -m arm -M force-thumb --architecture=armv6 sha256.bin | less` for ARMv6 Thumb
+
 `arm-none-eabi-objdump -D -m arm -M force-thumb --architecture=armv6 aes_ecb.bin | less` for ARMv6 Thumb ELFs
 
-We need to figure out how to make it so that we only skip an instruction once, i.e., just patching the binary with a NOP isn't accurate, since it might run into that instruction again without it being glitched.
+## Running Binaries
+The code included in `binaries/sources` are simply for testing.  They do not target any real hardware and are strictly for testing the tool.
+
+To run a specific binary targeting a device, you need to extract the relevant part of the binary in a way that does not make any calls to peripherals outside of simple IO.  For example, if your binary uses UART, you can patch the binary by replacing calls to UART with calls to the `_read` and `_write` stubs found in `binaries/stubs`.  Additionally, GPIO can be replaced with calls to `_trigger` if desired.  To run your code though the tool, you will create a `main` symbol which contains your patched binary, then link it with the `binaries/startup.s` code.  This way, the tool will be able to start up and run your binary.  
+
+For a specific example, check out the targets directory where we show this process on the TIMSPM0L2228.
+
+### Compiling From Source
+You must have the same version compiler and the same compilation flags/steps to create a binary that reflects the binary running on the target.  If you are creating your own programs and testing them, this is fine.  But if you only have the source code for the target which you are attacking, it is not likely you will be able to compile down to the exact binary that is running.  So it is recommended to use the exact binary running on your target whenever possible.
