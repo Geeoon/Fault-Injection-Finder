@@ -59,4 +59,6 @@ Compiled with "arm-none-eabi-gcc -c -march=armv6-m -mthumb init_device.s -o init
 I then asked Claude to create a script to replace the old function with the new one.  That script is located in the `example` folder.
 `python3 elf_patch.py ./infinite_loop.elf init_device ./init_device.bin -o ./ifinite_loop_patched.elf
 
-This process was then done for the `_write` function.  Since the `stubs.s` file already contains assembly, I just reused that 
+This process was then done for the `_write` function.  Since the `stubs.s` file already contains assembly, I just reused that.
+
+Afterwards, we should have an ELF which contains the correct 
