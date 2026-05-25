@@ -185,7 +185,7 @@ class FIEngine():
                 self._mutated_input = self._mutated_input[1:]
             else:
                 self.logger.debug("Ran out of input, sending null bytes")
-                data = b'\0'
+                data = b'\0' if self._pc_control else b'\xFF'
             self.logger.debug(f"IO read, sending {data}")
             mu.mem_write(self.RW_ADDRESS, data)
         return True

@@ -90,7 +90,8 @@ class PCSolver():
     
     def _io_read_hook(self, state):
         consumed = state.globals.get('inputs_consumed', 0)
-        if consumed < self.input_size:
+        # if consumed < self.input_size:  # removed so we always send symbollic inputs
+        if True:
             # give a symbollic byte
             sym_inp = claripy.BVS('io_read', 8)  # single symbolic input
             symbolic_inputs = state.globals.get('symbolic_inputs', [])
