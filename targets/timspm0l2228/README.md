@@ -45,6 +45,8 @@ main.s:354: Error: unknown pseudo-op: `.addrsig'
 main.s:356: Error: unknown pseudo-op: `.ti_attribute'
 ```
 
+You can also use this command to remove errors related to `.loc`: `grep -v "^\s*.loc" main.s`
+
 These errors are a result of the TI clang compiler having conflicts with our GCC compiler.  Just delete the lines where they appear and relink until the errors disappear.
 
 Then once we have the ELF, we can turn it into a binary: `arm-none-eabi-objcopy -O binary ininite_loop.elf infinite_loop.bin`
