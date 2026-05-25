@@ -4,9 +4,12 @@
 extern void init_device(void);
 extern int _write(int fd, char* buf, int len);
 extern int _read(int fd, char* buf, int len);
+extern void pwned(void);
 
 int main() {
     init_device();
+    volatile int lol = 0;
+    if (lol) pwned();
     char input[100];
     do {
         _write(0, "enter a password:", strlen("enter a password:"));

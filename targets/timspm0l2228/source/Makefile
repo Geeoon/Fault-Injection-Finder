@@ -66,6 +66,9 @@ $(STARTUP_OBJ): $(STARTUP_ASM)
 STUBS_ASM := $(BUILDDIR)/shared/stubs.s
 STUBS_OBJ := $(BUILDDIR)/shared/stubs.o
 
+PWNED_ASM := $(BUILDDIR)/shared/pwned.s
+PWNED_OBJ := $(BUILDDIR)/shared/pwned.o
+
 $(STUBS_ASM): stubs/stubs.c
 	@mkdir -p $(dir $@)
 	@echo "  S   $<"
@@ -74,6 +77,15 @@ $(STUBS_ASM): stubs/stubs.c
 $(STUBS_OBJ): $(STUBS_ASM)
 	@echo "  AS  $<"
 	@$(CC) $(CFLAGS) -Istubs -c $< -o $@
+
+$(PWNED_ASM): shellcode/pwned.c
+	@mkdir -p $(dir $@)
+	@echo "  S  $<"
+	@$(CC) $(CFLAGS) -Ipwned -S $< -o $@
+
+$(PWNED_OBJ): $(PWNED_ASM)
+	@echo "  AS  $<"
+	@$(CC) $(CFLAGS) -Ipwned -c $< -o $@
 
 # --- Per-project rules ---
 define COMPILE_RULE
@@ -98,13 +110,14 @@ $$(foreach src,$$($(1)_SRCS),$$(eval $$(call COMPILE_RULE,\
     $$(patsubst $(2)/%.c,$(BUILDDIR)/$(1)/%.o,$$(src)),\
     $(2))))
 
-$(BUILDDIR)/$(1)/$(1).elf: $$($(1)_OBJS) $(STARTUP_OBJ) $(STUBS_OBJ)
+$(BUILDDIR)/$(1)/$(1).elf: $$($(1)_OBJS) $(STARTUP_OBJ) $(STUBS_OBJ) $(PWNED_OBJ)
 	@mkdir -p $$(dir $$@)
 	@echo "  LD  $$@"
 	@$(LNK) -Wl,-u,_c_int00 \
 	    $$($(1)_OBJS) \
 	    $(STARTUP_OBJ) \
 	    $(STUBS_OBJ) \
+		$(PWNED_OBJ) \
 	    $(LFLAGS) \
 	    -Wl,-m,$(BUILDDIR)/$(1)/$(1).map \
 	    -o $$@
