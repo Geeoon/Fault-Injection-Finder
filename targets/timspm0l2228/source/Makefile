@@ -43,40 +43,60 @@ PROJ_NAMES := $(foreach d,$(PROJ_DIRS),$(notdir $(d)))
 
 ALL_ELFS := $(foreach n,$(PROJ_NAMES),$(BUILDDIR)/$(n)/$(n).elf)
 ALL_BINS := $(foreach n,$(PROJ_NAMES),$(BUILDDIR)/$(n)/$(n).bin)
+ALL_ASMS := $(foreach n,$(PROJ_NAMES),$(foreach src,$($(n)_SRCS),$(patsubst $(n)/%.c,$(BUILDDIR)/$(n)/%.s,$(src))))
 
 # MUST be first rule so it is the default goal
 .PHONY: all clean
 all: $(ALL_ELFS) $(ALL_BINS)
 
-# --- Startup ---
+# --- Startup (two-step: .c -> .s -> .o) ---
+STARTUP_ASM := $(BUILDDIR)/shared/startup_mspm0l222x_ticlang.s
 STARTUP_OBJ := $(BUILDDIR)/shared/startup_mspm0l222x_ticlang.o
 
-$(STARTUP_OBJ): startup_mspm0l222x_ticlang.c
+$(STARTUP_ASM): startup_mspm0l222x_ticlang.c
 	@mkdir -p $(dir $@)
-	@echo "  CC  $<"
+	@echo "  S   $<"
+	@$(CC) $(CFLAGS) -S $< -o $@
+
+$(STARTUP_OBJ): $(STARTUP_ASM)
+	@echo "  AS  $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-# --- Shared objects ---
+# --- Shared objects (two-step: .c -> .s -> .o) ---
+STUBS_ASM := $(BUILDDIR)/shared/stubs.s
 STUBS_OBJ := $(BUILDDIR)/shared/stubs.o
 
-$(STUBS_OBJ): stubs/stubs.c
+$(STUBS_ASM): stubs/stubs.c
 	@mkdir -p $(dir $@)
-	@echo "  CC  $<"
+	@echo "  S   $<"
+	@$(CC) $(CFLAGS) -Istubs -S $< -o $@
+
+$(STUBS_OBJ): $(STUBS_ASM)
+	@echo "  AS  $<"
 	@$(CC) $(CFLAGS) -Istubs -c $< -o $@
 
 # --- Per-project rules ---
 define COMPILE_RULE
 $(2): $(1)
 	@mkdir -p $$(dir $(2))
-	@echo "  CC  $(1)"
-	@$(CC) $(CFLAGS) -I$(3) -c $(1) -o $(2)
+	@echo "  S   $(1)"
+	@$(CC) $(CFLAGS) -I$(4) -S $(1) -o $(2)
+
+$(3): $(2)
+	@echo "  AS  $(2)"
+	@$(CC) $(CFLAGS) -I$(4) -c $(2) -o $(3)
 endef
 
 define PROJECT_template
 $(1)_SRCS := $$(patsubst ./%,%,$$(shell find $(2) -maxdepth 1 -name '*.c'))
+$(1)_ASMS := $$(patsubst $(2)/%.c,$(BUILDDIR)/$(1)/%.s,$$($(1)_SRCS))
 $(1)_OBJS := $$(patsubst $(2)/%.c,$(BUILDDIR)/$(1)/%.o,$$($(1)_SRCS))
 
-$$(foreach src,$$($(1)_SRCS),$$(eval $$(call COMPILE_RULE,$$(src),$$(patsubst $(2)/%.c,$(BUILDDIR)/$(1)/%.o,$$(src)),$(2))))
+$$(foreach src,$$($(1)_SRCS),$$(eval $$(call COMPILE_RULE,\
+    $$(src),\
+    $$(patsubst $(2)/%.c,$(BUILDDIR)/$(1)/%.s,$$(src)),\
+    $$(patsubst $(2)/%.c,$(BUILDDIR)/$(1)/%.o,$$(src)),\
+    $(2))))
 
 $(BUILDDIR)/$(1)/$(1).elf: $$($(1)_OBJS) $(STARTUP_OBJ) $(STUBS_OBJ)
 	@mkdir -p $$(dir $$@)
