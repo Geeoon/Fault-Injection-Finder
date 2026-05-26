@@ -66,5 +66,9 @@ int _write(int fd, char *buf, int len) {
     return len;
 }
 
+void led_blip() {
+    
+}
+
 void _fini(void) {}
 void _init(void) {}

@@ -19,7 +19,7 @@ int _write(int fd, char *buf, int len) {
     return len;
 }
 
-int led_blip() {
+void led_blip() {
     _trigger();
 }
 
