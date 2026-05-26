@@ -12,6 +12,7 @@ LINKERFILE  = linker.ld
 
 CFLAGS += -I.. \
     -D__MSPM0L2228__ \
+	-DNDEBUG \
     -O2 \
     -I$(MSPM0_SDK_INSTALL_DIR)/source/third_party/CMSIS/Core/Include \
     -I$(MSPM0_SDK_INSTALL_DIR)/source \
