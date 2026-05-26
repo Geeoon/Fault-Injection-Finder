@@ -5,6 +5,7 @@ extern void init_device(void);
 extern int _write(int fd, char* buf, int len);
 extern int _read(int fd, char* buf, int len);
 extern void pwned(void);
+extern void led_blip(void);
 
 int main() {
     init_device();

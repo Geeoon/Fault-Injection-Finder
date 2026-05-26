@@ -11,6 +11,10 @@
 #define UART_ADDR                       (UART_Regs*)UART0_BASE 
 #define BAUD_RATE                       115200
 
+#define LED3_PORT   GPIOA
+#define LED3_PIN    DL_GPIO_PIN_0
+#define LED3_IOMUX  IOMUX_PINCM1   // PA0 = PINCM1 on MSPM0L2228
+
 void init_device(void) {
     // UART configuration
     DL_UART_Config config = {
@@ -46,6 +50,18 @@ void init_device(void) {
 
     // UART enable
     DL_UART_enable(UART_ADDR);
+
+    // LED configuration
+    DL_GPIO_reset(LED3_PORT);
+    DL_GPIO_enablePower(LED3_PORT);
+    delay_cycles(POWER_STARTUP_DELAY);
+
+    DL_GPIO_initDigitalOutput(LED3_IOMUX);
+    DL_GPIO_clearPins(LED3_PORT, LED3_PIN);
+
+    DL_GPIO_setUpperPinsPolarity(LED3_PORT, 0);
+    DL_GPIO_enableOutput(LED3_PORT, LED3_PIN);
+    DL_GPIO_clearPins(LED3_PORT, LED3_PIN);  // GPIO low
 }
 
 void _exit(int status) {
@@ -66,8 +82,11 @@ int _write(int fd, char *buf, int len) {
     return len;
 }
 
-void led_blip() {
-    
+void led_blip(void) {
+    DL_GPIO_setPins(LED3_PORT, LED3_PIN);  // GPIO PA0 high, LED off
+    delay_cycles(2);
+    DL_GPIO_clearPins(LED3_PORT, LED3_PIN);  // GPIO PA0 low, LED On
+
 }
 
 void _fini(void) {}

@@ -19,7 +19,7 @@ static inline __attribute__((always_inline)) void _trigger(void) {
 // unicorn hooks
 int _read(int fd, char *buf, int len);
 int _write(int fd, char *buf, int len);
-void led_blip();  // alias for trigger
+void led_blip(void);  // alias for trigger
 
 void _exit(int status);
 void _fini(void);
