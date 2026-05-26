@@ -89,6 +89,7 @@ class FIEngine():
 
     def _init_emulator(self, index):
         # reset emulator
+        self._input = b''
         self.output = b''
         self.exit_code = None
         self._mutated_input = self.input
@@ -187,6 +188,7 @@ class FIEngine():
                 self.logger.debug("Ran out of input, sending null bytes")
                 data = b'\0' if self._pc_control else b'\xFF'
             self.logger.debug(f"IO read, sending {data}")
+            self._input += data
             mu.mem_write(self.RW_ADDRESS, data)
         return True
     
@@ -262,6 +264,7 @@ class FIEngine():
         return (
             self._decoded,
             self._skip_addr,
+            self._input,
             self.output,
             self.exit_code,
             final_registers,

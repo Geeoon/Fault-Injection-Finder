@@ -90,7 +90,7 @@ class FaultInjectionFinder():
             res = self.engine.run(fault_index=index, max_iter=self.max_iter)
             if not res:
                 break  # continue?
-            skipped_instruction, skipped_addr, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index, triggers = res
+            skipped_instruction, skipped_addr, prog_input, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index, triggers = res
             index = next_index
 
             # check if we got any actual results
@@ -118,6 +118,7 @@ class FaultInjectionFinder():
                 skipped_addr,
                 fault_cycle,
                 skipped_instruction,
+                prog_input,
                 res_output,
                 res_exit,
                 res_regs,
@@ -137,6 +138,6 @@ class FaultInjectionFinder():
         """
         self.engine = FIEngine(binary=self.binary, input=real_input, enable_thumb=self.thumb, BINARY_ADDRESS=self.binary_addr)
         self.logger.info("Simulating the fault...")
-        skipped_instruction, skipped_addr, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index, triggers = self.engine.run(index, max_iter=self.max_iter)        
+        skipped_instruction, skipped_addr, prog_input, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index, triggers = self.engine.run(index, max_iter=self.max_iter)        
         self.logger.info("Simulation finished")
-        return res_output, res_exit, manual
+        return prog_input, res_output, res_exit, manual
