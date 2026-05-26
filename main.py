@@ -153,7 +153,7 @@ for fault in faults:
         print("Got control of the PC")
         if input_to_pc is not None:
             print("!" * 10)
-            print(f"By giving an input of {input_to_pc}, we get the desired PC value of {finder.desired_pc}")
+            print(f"By giving an input of {input_to_pc}, we get the desired PC value of 0x{finder.desired_pc:x}")
             print("!" * 10)
             # store to directory
             if args.output_dir:
