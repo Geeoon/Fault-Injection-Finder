@@ -142,7 +142,7 @@ class FIEngine():
     def _flip_bits(self, input: bytes) -> bytes:
         out = b''
         for byte in input:
-            out += bytes(byte ^ 0xFF)
+            out += (byte ^ 0xFF).to_bytes(1)
         return out
 
     def _instr_hook(self, mu, address, size, user_data):
@@ -185,8 +185,8 @@ class FIEngine():
                 data = (self._mutated_input[0]).to_bytes(1)
                 self._mutated_input = self._mutated_input[1:]
             else:
-                self.logger.debug("Ran out of input, sending null bytes")
-                data = b'\0' if self._pc_control else b'\xFF'
+                data = b'\xFF' if self._invalid_fetch is not None else b'\0'
+                self.logger.debug(f"Ran out of input, sending {data}")
             self.logger.debug(f"IO read, sending {data}")
             self._input += data
             mu.mem_write(self.RW_ADDRESS, data)
@@ -235,7 +235,9 @@ class FIEngine():
                 self.logger.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")
         except InvalidFetch as e:
             self.logger.debug(f"Emulator fetched invalid instruction.  Trying again with a different input.")
+            temp = self._invalid_fetch  # temporarily store, since _init_emulator will set it to None
             self._init_emulator(fault_index)
+            self._invalid_fetch = temp
             # flip all bits for normal input
             self._mutated_input = self._flip_bits(self.input)
             self._pc_control = True
