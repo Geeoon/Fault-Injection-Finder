@@ -92,6 +92,28 @@ _write:
 .L14:
 	.word	50335744
 	.size	_write, .-_write
+	.section	.text.led_blip,"ax",%progbits
+	.align	1
+	.p2align 2,,3
+	.global	led_blip
+	.syntax unified
+	.code	16
+	.thumb_func
+	.type	led_blip, %function
+led_blip:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	movs	r2, #0
+	@ sp needed
+	ldr	r3, .L17
+	str	r2, [r3]
+	bx	lr
+.L18:
+	.align	2
+.L17:
+	.word	50343936
+	.size	led_blip, .-led_blip
 	.section	.text._fini,"ax",%progbits
 	.align	1
 	.p2align 2,,3
