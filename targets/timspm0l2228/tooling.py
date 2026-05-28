@@ -2,22 +2,24 @@
 
 import pyserial
 
+TRIALS = 10  # number of trials to do per glitch parameter
+
 class FPGAParameters():
-    def __init__(self, port: str, speed: int=115200, wait: int=0, period: int=10):
+    def __init__(self, port: str, speed: int=115200, delay: int=0, length: int=10):
         """
         Initializes an FPGAParameters object
-        :param wait: how long to wait after a trigger before the glitch, in FPGA clock cycles
-        :param period: how long to do the glitch for, in FPGA clock cycles
+        :param delay: how long to delay after a trigger before the glitch, in FPGA clock cycles
+        :param length: how long to do the glitch for, in FPGA clock cycles
         """
-        self.wait = wait
-        self.period = period
+        self.delay = delay
+        self.length = length
         self.ser = serial.Serial(port, speed, timeout=1)
 
     def serialize(self) -> bytes
         """
         Serializes the FPGAParameters to be sent over UART
         """
-        return struct.pack(">II", self.wait, self.period)
+        return b'\0' + struct.pack(">I", self.delay) + b'\xFF' + struct.pack(">B", self.length)
 
     def send(self):
         """
@@ -27,6 +29,13 @@ class FPGAParameters():
         res = self.ser.read()
         if not res:
             raise Exception("FPGA timed out")
+
+    def close(self):
+        """
+        Close the serial connection
+        """
+        self.ser.close()
+
 
 def reset_device():
     subprocess.run("dslite -c MSPM0L2228.ccxml -r 1")
@@ -45,18 +54,28 @@ def check_success(ser: serial.Serial) -> bool:
     Checks if a fault resulted in a proper security fault
     :param ser: the serial object for the device being hacked
     """
-
+    # get the expected output
+    successful_output = b''
+    with open('./expected.bin', 'rb') as f:  # TODO: change path to actual
+        expected_output = f.read()
+    
+    # get the real output
+    real_output = ser.read()
+    return successful_output in real_output:
 
 device_ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 parameters = FPGAParameters(port='/dev/ttyACM1', speed=115200)  # TODO: change to be the actual FPGA port
 
-
-# send the intial parameters
-parameters.send()
-# reset_device
-reset_device()
+# send the parameters to the FPGA
+for i in range(100):
+    parameters.send()
+    for _ in range(TRIALS):
+        reset_device()
+        setup_device(device_ser)
+        success = check_success(device_ser)
+        if success:
+            print(f"Successful fault with {self.parameters.delay} delay cycles with {self.parameters.length} glitching length cycles")
 
 
 # Close the port when done
-ser.close()
-
+device_ser.close()
