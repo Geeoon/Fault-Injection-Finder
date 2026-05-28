@@ -52,3 +52,8 @@ These errors are a result of the TI clang compiler having conflicts with our GCC
 Then once we have the ELF, we can turn it into a binary: `arm-none-eabi-objcopy -O binary ininite_loop.elf infinite_loop.bin`
 
 You can now run the program using the tool.
+
+### Reference
+System Reset: `dslite -c MSPM0L2228.ccxml -r 1`
+Flash Binary: `dslite -c MSPM0L2228.ccxml -f ./source/build/hello_world/hello_world.elf`
+
