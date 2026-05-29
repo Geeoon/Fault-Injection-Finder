@@ -1,9 +1,11 @@
 # interacts with the FPGA's UART interface to provide glitching parameters
 
 import serial
-import subprocess
 import os 
 import logging
+import struct
+import time
+from pyocd.core.helpers import ConnectHelper
 
 TRIALS = 10  # number of trials to do per glitch parameter
 
@@ -84,11 +86,15 @@ class TargetDevice():
         self.ser.close()
 
 
+SESSION = ConnectHelper.session_with_chosen_probe(target_override="mspm0l2228")
+SESSION.open()
+OCD_TARGET = SESSION.board.target
 def setup_device(ser: serial.Serial):
     # NOTE: this is part of the tool that is very dependent on the target
     # This example for for targets that just reads at the beginning
     # reset the device
-    subprocess.run(["dslite", "-c", "MSPM0L2228.ccxml", "-r", "1"], stdout=subprocess.DEVNULL)
+    # subprocess.run(["dslite", "-c", "MSPM0L2228.ccxml", "-r", "1"], stdout=subprocess.DEVNULL)
+    OCD_TARGET.dp.reset()
     # clear buffers for a fresh start
     ser.reset_output_buffer()
     ser.reset_input_buffer()
@@ -112,15 +118,19 @@ with open('./expected.bin', 'rb') as f:  # TODO: make this a command line argume
     expected = f.read()
 target = TargetDevice(expected_output=expected, port='/dev/ttyACM0', speed=115200, timeout=1)
 target.set_setup_callback(setup_device)
-parameters = FPGAParameters(port='/dev/ttyACM1', speed=115200)  # TODO: change to be the actual FPGA port
+# parameters = FPGAParameters(port='/dev/ttyACM1', speed=115200)  # TODO: change to be the actual FPGA port
 
 # send the parameters to the FPGA
-for i in range(100):
-    # parameters.send()
-    for _ in range(TRIALS):
-        if target.run():
-            print(f"Successful fault with {self.parameters.delay} delay cycles with {self.parameters.length} glitching length cycles")
+for delay_delta in range(-10, 11):  # -10 to 10, going by 1
+    for length in range(8, 13, 2):  # 8 to 12, jumping by 2
+        # parameters.send()
+        for _ in range(TRIALS):
+            if target.run():
+                pass
+                # print(f"Successful fault with {self.parameters.delay} delay cycles with {self.parameters.length} glitching length cycles")
 
 # Close the serial when done
-parameters.close()
+# parameters.close()
 target.close()
+
+SESSION.close()
