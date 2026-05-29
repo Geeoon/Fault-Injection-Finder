@@ -74,6 +74,7 @@ class TargetDevice():
         """
         self.logger.info("Running the program")
         self.setup(self.ser)
+        time.sleep(.01)
         real_output = self.ser.read_all()
         self.logger.info(f"Got the following output {real_output}")
         return self.expected_output in real_output
