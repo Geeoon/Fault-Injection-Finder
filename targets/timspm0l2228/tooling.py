@@ -5,9 +5,11 @@ import os
 import logging
 import struct
 import time
+import pickle
+
 from pyocd.core.helpers import ConnectHelper
 
-TRIALS = 10  # number of trials to do per glitch parameter
+TRIALS = 5  # number of trials to do per glitch parameter
 
 class FPGAParameters():
     def __init__(self, port: str, speed: int=115200, delay: int=0, length: int=5):
@@ -150,6 +152,11 @@ logging.getLogger("FPGAParameters").setLevel(logging.DEBUG)
 # get the expected output from file
 with open('./expected.bin', 'rb') as f:  # TODO: make this a command line argument
     expected = f.read()
+# get the glitch parameters
+with open('./exported.pkl', 'rb') as f:  # TODO: make this a command line argument
+    options = pickle.load(f)
+print(options)
+
 target = TargetDevice(expected_output=expected, port='/dev/ttyACM0', speed=115200, timeout=1)
 target.set_setup_callback(setup_device)
 # parameters = FPGAParameters(port='/dev/ttyACM1', speed=115200)  # TODO: change to be the actual FPGA port

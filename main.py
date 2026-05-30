@@ -1,9 +1,12 @@
 import logging
 import argparse
 from pathlib import Path
+import pickle
 
 from FaultInjectionFinder import FaultInjectionFinder
 from FaultInjectionFinder.Engine.FIEngine import DEFAULT_BINARY_ADDRESS
+
+from helper import estimate_cycles, CycleEstimate
 
 def get_ordinal(n):
     # Handle teen exceptions (11, 12, 13)
@@ -118,20 +121,37 @@ if args.simulate is not None:
 
 faults = finder.find_faults()
 print(f"Found {len(faults)} faults.")
+exports = []
 for fault in faults:
     i, fault_cycle, insns, prog_input, output, exit_code, regs, pc_control, manual, input_to_pc, triggers = fault
 
     print("=" * 50)
     print(f"Fault target address: 0x{i:x}")
     print(f"Fault instruction issue #: {fault_cycle}")
-    if triggers:
-        result = max((trigger for trigger in triggers if trigger[0] < fault_cycle), default=None)
-        if result is not None:
-            print(f"{fault_cycle - result[0]} instruction issues after the {get_ordinal(len(triggers))} trigger")
-            print(f"Trigger address: 0x{result[1]:x}")
-    print("\nInstruction(s):")
+    print("\nInstruction(s) skipped:")
     for insn in insns:
         print(f"  0x{insn.address:x}: {insn.mnemonic} {insn.op_str}")
+    estimated_cycles = None
+    idx = None
+    if triggers:
+        matching = [(i, t) for i, t in enumerate(triggers) if t[0] < fault_cycle]
+        if matching:
+            idx, result = max(matching, key=lambda x: x[1][0])
+            print(f"{fault_cycle - result[0]} instruction issues after the {get_ordinal(idx+1)} trigger")
+            print(f"Trigger address: 0x{result[1]:x}")
+            if len(result[2]) < 30:
+                print("Instructions ran after trigger:")
+                for insn in result[2][:30]:
+                    for i in insn:
+                        print(f"  0x{i.address:x}: {i.mnemonic} {i.op_str}")
+            # convert to list of capstone instructions
+            after_trigger = []
+            if result[2]:
+                for insn in result[2]:
+                    for i in insn:
+                        after_trigger.append(i)
+            estimated_cycles = estimate_cycles(after_trigger[:-1])
+            print(f"You should glitch approximately {estimated_cycles} cycles after the trigger")
     if manual:
         print("Fault was manually triggered")
 
@@ -162,7 +182,19 @@ for fault in faults:
         elif finder.desired_pc is not None:
             print(f"Unable to find a suitable input to get the desired PC value")
 
+    if estimated_cycles and idx is not None:
+        exports.append({
+            'index': idx,
+            'cycles_after_trigger': [estimated_cycles.lower, estimated_cycles.best, estimated_cycles.upper],
+            'input': input_to_pc if (input_to_pc is not None) else prog_input,
+            'pc_control': pc_control
+        })
+
     print()
+
+if args.output_dir:
+    with open(f"{args.output_dir}/exported.pkl", "wb") as file:
+        pickle.dump(exports, file)
 
 # ./binaries/infinite_loop.bin ./inputs/infinite_loop.bin -o ./expecteds/infinite_loop.bin
 # finder = FaultInjectionFinder('./binaries/infinite_loop.bin', input=b'whatever', expected_output=b'escaped the loop')

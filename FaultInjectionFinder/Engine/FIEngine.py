@@ -147,26 +147,36 @@ class FIEngine():
 
     def _instr_hook(self, mu, address, size, user_data):
         self._instruction_count += 1
+        decoded = None
+        if self.triggers and not self._skip_cycle:
+            # decoding is a slow operation, only do it if necessary
+            decoded = list(self.md.disasm(mu.mem_read(address, size), address))
+            if not decoded:
+                self.logger.error("Could not decode the instruction to be skipped")
+                # shouldn't happen with our configuration
+                mu.emu_stop()
+                return False
+            self.triggers[-1][2].append(decoded)
         # check _skip_cycle to prevent skipping multiple times
         if (self._skip_cycle is None) and (self._instruction_count >= self._skip_index) and ((self.addr_range is None) or ((address >= self.addr_range[0]) and (address <= self.addr_range[1]))):
             # we can now start skipping instructions, if they fit the criteria
             if self.skip_addrs is None or (address & ~1) in self.skip_addrs:
                 # brute force or at the index we should skip
-                decoded = list(self.md.disasm(mu.mem_read(address, size), address))
-
+                self._skip_cycle = self._instruction_count
+                self._skip_addr = address & ~1
                 if not decoded:
-                    self.logger.error("Could not decode the instruction to be skipped")
-                    # shouldn't happen with our configuration
-                    mu.emu_stop()
-                else:
-                    self._skip_cycle = self._instruction_count
-                    self._skip_addr = address & ~1
-                    self._decoded = decoded
-                    self.logger.info(
-                        f"Skipping 0x{address:x}: {self._decoded[0].mnemonic} "
-                        f"{self._decoded[0].op_str} at runtime cycle {self._skip_cycle}."
-                    )
-                    mu.reg_write(PC, (address + size) | (1 if self.thumb else 0))
+                    decoded = list(self.md.disasm(mu.mem_read(address, size), address))
+                    if not decoded:
+                        self.logger.error("Could not decode the instruction to be skipped")
+                        # shouldn't happen with our configuration
+                        mu.emu_stop()
+                        return False
+                self._decoded = decoded
+                self.logger.info(
+                    f"Skipping 0x{address:x}: {self._decoded[0].mnemonic} "
+                    f"{self._decoded[0].op_str} at runtime cycle {self._skip_cycle}."
+                )
+                mu.reg_write(PC, (address + size) | (1 if self.thumb else 0))
 
 
     def _exit_hook(self, mu, access, address, size, value, user_data) -> bool:
@@ -198,7 +208,7 @@ class FIEngine():
         mu.emu_stop()
 
     def _trigger_hook(self, mu, access, address, size, value, user_data) -> bool:
-        self.triggers.append((self._instruction_count, self.mu.reg_read(PC)))
+        self.triggers.append((self._instruction_count, self.mu.reg_read(PC), []))
         logging.debug("Hit trigger.")
 
     def _mem_invalid_hook(self, mu, access, address, size, value, user_data) -> bool:
