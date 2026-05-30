@@ -151,7 +151,7 @@ for fault in faults:
                     for i in insn:
                         after_trigger.append(i)
             estimated_cycles = estimate_cycles(after_trigger[:-1])
-            print(f"You should glitch approximately {estimated_cycles} cycles after the trigger")
+            print(f"You should glitch approximately {estimated_cycles.best} cycles after the trigger, at least {estimated_cycles.lower} and at most {estimated_cycles.upper}")
     if manual:
         print("Fault was manually triggered")
 
