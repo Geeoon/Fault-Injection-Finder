@@ -33,19 +33,27 @@ class FPGAParameters():
         self.delay_delta = 0
         self.length_delta = 0
 
+    def serialize_delay(self) -> bytes:
+        out = b''
+        for b in struct.pack(">I", self.get_delay()):
+            out += b'\0'
+            out += b
+
+    def serialize_length(self) -> bytes:
+        return b'\xFF' + struct.pack(">B", self.get_length())
+
     def serialize(self) -> bytes:
         """
         Serializes the FPGAParameters to be sent over UART
         """
         # send the delay, then the length, then reset it
-        print(self.get_delay())
-        return ((0b10101010).to_bytes(1), b'\0' + struct.pack(">I", self.get_delay()),  b'\xFF' + struct.pack(">B", self.get_length()))
+        return (0b10101010).to_bytes(1) + self.serialize_delay() + self.serialize_length()
 
     def send(self):
         """
         Sends the serialized parameters to the FPGA and waits for an ACK
         """
-        for packet in self.serialize():
+        for b in self.serialize():
             self.logger.info(f"Sending {packet} to the FPGA")
             self.ser.write(packet)
             res = self.ser.read()
@@ -164,11 +172,10 @@ with open('./exported.pkl', 'rb') as f:  # TODO: make this a command line argume
 
 target = TargetDevice(expected_output=expected, port='/dev/ttyACM0', baud=115200, timeout=1)
 target.set_setup_callback(setup_device)
-parameters = FPGAParameters(port='/dev/ttyACM1', baud=115200)  # TODO: change to be the actual FPGA port
+parameters = FPGAParameters(port='/dev/', baud=115200)  # TODO: change to be the actual FPGA port
 
 current_glitch = options[0]
 parameters.delay = current_glitch['cycles_after_trigger'][1]
-print(parameters.delay)
 successes = []
 try:
     # send the parameters to the FPGA
@@ -179,6 +186,7 @@ try:
             logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
             for _ in range(TRIALS):
                 parameters.send()
+                quit()
                 if target.run(current_glitch['input']):
                     pass
                     logging.critical(f"Successful fault with {parameters.get_delay()} delay cycles with {parameters.get_length()} glitching length cycles")
