@@ -3,7 +3,7 @@
 extern void init_device(void);
 extern int _write(int fd, char* buf, int len);
 extern void pwned(void);
-extern void blip_led(void);
+extern void led_blip(void);
 
 int main() {
     // prevents gcc from optimizing away the stuff aster the loop

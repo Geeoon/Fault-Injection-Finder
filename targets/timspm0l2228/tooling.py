@@ -36,9 +36,8 @@ class FPGAParameters():
     def serialize_delay(self) -> bytes:
         out = b''
         for b in struct.pack(">I", self.get_delay()):
-            out += b'\xFF'
             out += b.to_bytes(1)
-        return out
+        return b'\xFF' + out
 
     def serialize_length(self) -> bytes:
         return b'\x00' + struct.pack(">B", self.get_length())
@@ -48,19 +47,21 @@ class FPGAParameters():
         Serializes the FPGAParameters to be sent over UART
         """
         # send the delay, then the length, then reset it
-        print(self.get_delay(), self.serialize_delay())
-        print(self.get_length(), self.serialize_length())
         return b'\xaa' + self.serialize_delay() + self.serialize_length()
 
     def send(self):
         """
         Sends the serialized parameters to the FPGA and waits for an ACK
         """
+
         for b in self.serialize():
             self.logger.info(f"Sending {b.to_bytes(1)} to the FPGA")
+            self.ser.reset_input_buffer()
             self.ser.write(b.to_bytes(1))
+            self.ser.flush()
             res = self.ser.read()
             self.logger.info(f"Got {res} from the FPGA")
+            time.sleep(.05)
             if not res:
                 raise Exception("FPGA timed out")
     
@@ -104,11 +105,35 @@ class FPGAParameters():
         self.ser.close()
 
     def test(self):
+        # reset
+        self.ser.reset_input_buffer()
+        self.ser.write(b'\xaa')
+        self.ser.flush()
+        print(self.ser.read(1))
+        time.sleep(.05)
+
+        # send delay
+        # header
+        self.ser.reset_input_buffer()
+        self.ser.write(b'\xFF')
+        self.ser.flush()
+        print(self.ser.read(1))
+        time.sleep(.05)
+        for _ in range(4):
+            self.ser.reset_input_buffer()
+            self.ser.write(b'\x00')
+            self.ser.flush()
+            print(self.ser.read(1))
+            time.sleep(.05)
+
+        # send length
+        # header
         self.ser.reset_input_buffer()
         self.ser.write(b'\x00')
         self.ser.flush()
         print(self.ser.read(1))
         time.sleep(.05)
+        # data
         self.ser.reset_input_buffer()
         self.ser.write(b'\xa5')
         self.ser.flush()
@@ -193,7 +218,13 @@ parameters = FPGAParameters(port='/dev/ttyUSB0', baud=115200)  # TODO: change to
 # quit()
 
 current_glitch = options[0]
-parameters.delay = current_glitch['cycles_after_trigger'][1]
+# parameters.delay = current_glitch['cycles_after_trigger'][1]
+parameters.delay = 32000000
+parameters.length = 1
+parameters.set_delay_delta(0)
+parameters.set_length_delta(0)
+parameters.send()
+quit()
 successes = []
 try:
     # send the parameters to the FPGA
@@ -201,6 +232,7 @@ try:
         for length in range(-2, 3):  # -2 to 2, going by 1
             parameters.set_delay_delta(delay_delta)
             parameters.set_length_delta(length)
+            
             logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
             for _ in range(TRIALS):
                 parameters.send()
