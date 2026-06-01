@@ -86,7 +86,7 @@ int _write(int fd, char *buf, int len) {
 
 void led_blip(void) {
     DL_GPIO_setPins(LED3_PORT, LED3_PIN);  // GPIO PA0 high
-    delay_cycles(2);
+    delay_cycles(5);
     DL_GPIO_clearPins(LED3_PORT, LED3_PIN);  // GPIO PA0 low
 }
 

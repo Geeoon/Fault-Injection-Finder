@@ -10,7 +10,7 @@ import threading
 
 from pyocd.core.helpers import ConnectHelper
 
-TRIALS = 1  # number of trials to do per glitch parameter
+TRIALS = 10  # number of trials to do per glitch parameter
 
 class FPGAParameters():
     def __init__(self, port: str, baud: int=115200, fpga_speed: int=200, target_speed: int=32, delay: int=0, length: int=5):
@@ -35,7 +35,6 @@ class FPGAParameters():
         self.length_delta = 0
         self.bg_thread = None
         self.bg_thread_running = False
-        self.last_char = None
 
     def serialize_delay(self) -> bytes:
         out = b''
@@ -65,7 +64,7 @@ class FPGAParameters():
             self.ser.flush()
             res = self.ser.read()
             self.logger.debug(f"Got {res} from the FPGA")
-            time.sleep(.05)
+            # time.sleep(.05)
             if not res:
                 raise Exception("FPGA timed out")
     
@@ -121,52 +120,48 @@ class FPGAParameters():
         if self.bg_thread is not None and self.bg_thread.is_alive():
             self.bg_thread.join()
         self.bg_thread = None
-        self.last_char = None
 
     def _bg_thread(self):
         self.logger.info("Starting the FPGA background thread")
         while self.bg_thread_running:
-            char = self.ser.read(1)
-            if len(char) != 0:
-                if self.last_char is None:
-                    self.logger.info(f"FPGA background thread got {char}")
-                self.last_char = char
-                self.logger.info(f"FPGA background thread got {char}")
+            msg = self.ser.read_all()
+            if len(msg) != 0:
+                self.logger.info(f"FPGA background thread got {msg}")
 
-    def test(self):
-        # reset
-        self.ser.reset_input_buffer()
-        self.ser.write(b'\xaa')
-        self.ser.flush()
-        print(self.ser.read(1))
-        time.sleep(.05)
+    # def test(self):
+    #     # reset
+    #     self.ser.reset_input_buffer()
+    #     self.ser.write(b'\xaa')
+    #     self.ser.flush()
+    #     print(self.ser.read(1))
+    #     time.sleep(.05)
 
-        # send delay
-        # header
-        self.ser.reset_input_buffer()
-        self.ser.write(b'\xFF')
-        self.ser.flush()
-        print(self.ser.read(1))
-        time.sleep(.05)
-        for _ in range(4):
-            self.ser.reset_input_buffer()
-            self.ser.write(b'\x00')
-            self.ser.flush()
-            print(self.ser.read(1))
-            time.sleep(.05)
+    #     # send delay
+    #     # header
+    #     self.ser.reset_input_buffer()
+    #     self.ser.write(b'\xFF')
+    #     self.ser.flush()
+    #     print(self.ser.read(1))
+    #     time.sleep(.05)
+    #     for _ in range(4):
+    #         self.ser.reset_input_buffer()
+    #         self.ser.write(b'\x00')
+    #         self.ser.flush()
+    #         print(self.ser.read(1))
+    #         time.sleep(.05)
 
-        # send length
-        # header
-        self.ser.reset_input_buffer()
-        self.ser.write(b'\x00')
-        self.ser.flush()
-        print(self.ser.read(1))
-        time.sleep(.05)
-        # data
-        self.ser.reset_input_buffer()
-        self.ser.write(b'\xa5')
-        self.ser.flush()
-        print(self.ser.read(1))
+    #     # send length
+    #     # header
+    #     self.ser.reset_input_buffer()
+    #     self.ser.write(b'\x00')
+    #     self.ser.flush()
+    #     print(self.ser.read(1))
+    #     time.sleep(.05)
+    #     # data
+    #     self.ser.reset_input_buffer()
+    #     self.ser.write(b'\xa5')
+    #     self.ser.flush()
+    #     print(self.ser.read(1))
 
 
 class TargetDevice():
@@ -197,8 +192,8 @@ class TargetDevice():
         self.logger.info("Running the program")
         self.setup(self.ser, program_input)
         self.logger.info("All set up")
-        time.sleep(.25)
-        real_output = self.ser.read_all()
+        time.sleep(.1)  # waiting for the results of the glitch
+        real_output = self.ser.read_all()  # read the results
         self.logger.info(f"Got the following output {real_output}")
         return self.expected_output in real_output
     
@@ -224,10 +219,10 @@ logging.basicConfig(
 )
 
 # get the expected output from file
-with open('./infinite_loop/infinite_loop.bin', 'rb') as f:  # TODO: make this a command line argument
+with open('./password/password.bin', 'rb') as f:  # TODO: make this a command line argument
     expected = f.read()
 # get the glitch parameters
-with open('./infinite_loop/exported.pkl', 'rb') as f:  # TODO: make this a command line argument
+with open('./password/exported.pkl', 'rb') as f:  # TODO: make this a command line argument
     options = pickle.load(f)
 
 target = TargetDevice(expected_output=expected, port='/dev/ttyACM0', baud=115200, timeout=1)
@@ -241,12 +236,13 @@ def setup_device(ser: serial.Serial, program_input: bytes):
     # This example for for targets that just reads at the beginning
     # reset the device
     # subprocess.run(["dslite", "-c", "MSPM0L2228.ccxml", "-r", "1"], stdout=subprocess.DEVNULL)  # backup if pyocd doens't work
-    OCD_TARGET.dp.reset()
-    time.sleep(1)
+    OCD_TARGET.dp.reset()  # send reset via OCD
+    time.sleep(.05)  # wait for reset to complete
+    # clear buffers for a fresh start
     ser.reset_output_buffer()
     ser.reset_input_buffer()
-    parameters.send()
-    # clear buffers for a fresh start
+    parameters.send()  # also resets the board
+    # time.sleep(0.05)  # wait for stuff to send over
     parameters.start_background_listener()
     ser.write(program_input)
 
@@ -258,8 +254,8 @@ parameters.length = 5
 successes = []
 try:
     # send the parameters to the FPGA
-    for delay_delta in range(-20, 21):  # -10 to 10, going by 1
-        for length in range(0, 1):  # -2 to 2, going by 1
+    for delay_delta in range(-10, 11):  # -10 to 10, going by 1
+        for length in range(-2, 3):  # -2 to 2, going by 1
             parameters.set_delay_delta(delay_delta)
             parameters.set_length_delta(length)
             
