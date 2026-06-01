@@ -6,10 +6,11 @@ import logging
 import struct
 import time
 import pickle
+import threading
 
 from pyocd.core.helpers import ConnectHelper
 
-TRIALS = 5  # number of trials to do per glitch parameter
+TRIALS = 1  # number of trials to do per glitch parameter
 
 class FPGAParameters():
     def __init__(self, port: str, baud: int=115200, fpga_speed: int=200, target_speed: int=32, delay: int=0, length: int=5):
@@ -32,6 +33,9 @@ class FPGAParameters():
         self.ser = serial.Serial(port, baud, timeout=1)
         self.delay_delta = 0
         self.length_delta = 0
+        self.bg_thread = None
+        self.bg_thread_running = False
+        self.last_char = None
 
     def serialize_delay(self) -> bytes:
         out = b''
@@ -55,12 +59,12 @@ class FPGAParameters():
         """
 
         for b in self.serialize():
-            self.logger.info(f"Sending {b.to_bytes(1)} to the FPGA")
+            self.logger.debug(f"Sending {b.to_bytes(1)} to the FPGA")
             self.ser.reset_input_buffer()
             self.ser.write(b.to_bytes(1))
             self.ser.flush()
             res = self.ser.read()
-            self.logger.info(f"Got {res} from the FPGA")
+            self.logger.debug(f"Got {res} from the FPGA")
             time.sleep(.05)
             if not res:
                 raise Exception("FPGA timed out")
@@ -102,7 +106,32 @@ class FPGAParameters():
         Close the serial connection
         """
         self.logger.info("Closing the FGPA serial connection")
+        self.stop_background_listener()
         self.ser.close()
+
+    def start_background_listener(self):
+        self.ser.reset_output_buffer()
+        self.ser.reset_input_buffer()
+        self.bg_thread = threading.Thread(target=self._bg_thread)
+        self.bg_thread_running = True
+        self.bg_thread.start()
+
+    def stop_background_listener(self):
+        self.bg_thread_running = False
+        if self.bg_thread is not None and self.bg_thread.is_alive():
+            self.bg_thread.join()
+        self.bg_thread = None
+        self.last_char = None
+
+    def _bg_thread(self):
+        self.logger.info("Starting the FPGA background thread")
+        while self.bg_thread_running:
+            char = self.ser.read(1)
+            if len(char) != 0:
+                if self.last_char is None:
+                    self.logger.info(f"FPGA background thread got {char}")
+                self.last_char = char
+                self.logger.info(f"FPGA background thread got {char}")
 
     def test(self):
         # reset
@@ -167,7 +196,8 @@ class TargetDevice():
         """
         self.logger.info("Running the program")
         self.setup(self.ser, program_input)
-        time.sleep(.05)
+        self.logger.info("All set up")
+        time.sleep(.25)
         real_output = self.ser.read_all()
         self.logger.info(f"Got the following output {real_output}")
         return self.expected_output in real_output
@@ -184,71 +214,69 @@ class TargetDevice():
 SESSION = ConnectHelper.session_with_chosen_probe(target_override="mspm0l2228")
 SESSION.open()
 OCD_TARGET = SESSION.board.target
+
+logging.getLogger("TargetDevice").setLevel(logging.INFO)
+logging.getLogger("FPGAParameters").setLevel(logging.INFO)
+
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+# get the expected output from file
+with open('./infinite_loop/infinite_loop.bin', 'rb') as f:  # TODO: make this a command line argument
+    expected = f.read()
+# get the glitch parameters
+with open('./infinite_loop/exported.pkl', 'rb') as f:  # TODO: make this a command line argument
+    options = pickle.load(f)
+
+target = TargetDevice(expected_output=expected, port='/dev/ttyACM0', baud=115200, timeout=1)
+parameters = FPGAParameters(port='/dev/ttyUSB0', baud=115200)
+
+# parameters.test()
+# quit()
+
 def setup_device(ser: serial.Serial, program_input: bytes):
     # NOTE: this is part of the tool that is very dependent on the target
     # This example for for targets that just reads at the beginning
     # reset the device
     # subprocess.run(["dslite", "-c", "MSPM0L2228.ccxml", "-r", "1"], stdout=subprocess.DEVNULL)  # backup if pyocd doens't work
     OCD_TARGET.dp.reset()
-    # clear buffers for a fresh start
+    time.sleep(1)
     ser.reset_output_buffer()
     ser.reset_input_buffer()
+    parameters.send()
+    # clear buffers for a fresh start
+    parameters.start_background_listener()
     ser.write(program_input)
 
-logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    level=logging.WARNING
-)
-
-logging.getLogger("TargetDevice").setLevel(logging.DEBUG)
-logging.getLogger("FPGAParameters").setLevel(logging.DEBUG)
-
-# get the expected output from file
-with open('./expected.bin', 'rb') as f:  # TODO: make this a command line argument
-    expected = f.read()
-# get the glitch parameters
-with open('./exported.pkl', 'rb') as f:  # TODO: make this a command line argument
-    options = pickle.load(f)
-
-target = TargetDevice(expected_output=expected, port='/dev/ttyACM0', baud=115200, timeout=1)
 target.set_setup_callback(setup_device)
-parameters = FPGAParameters(port='/dev/ttyUSB0', baud=115200)  # TODO: change to be the actual FPGA port
-
-# parameters.test()
-# quit()
 
 current_glitch = options[0]
-# parameters.delay = current_glitch['cycles_after_trigger'][1]
-parameters.delay = 32000000
-parameters.length = 1
-parameters.set_delay_delta(0)
-parameters.set_length_delta(0)
-parameters.send()
-quit()
+parameters.delay = current_glitch['cycles_after_trigger'][1]
+parameters.length = 5
 successes = []
 try:
     # send the parameters to the FPGA
-    for delay_delta in range(-10, 11):  # -10 to 10, going by 1
-        for length in range(-2, 3):  # -2 to 2, going by 1
+    for delay_delta in range(-20, 21):  # -10 to 10, going by 1
+        for length in range(0, 1):  # -2 to 2, going by 1
             parameters.set_delay_delta(delay_delta)
             parameters.set_length_delta(length)
             
             logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
             for _ in range(TRIALS):
-                parameters.send()
-                quit()
                 if target.run(current_glitch['input']):
-                    pass
                     logging.critical(f"Successful fault with {parameters.get_delay()} delay cycles with {parameters.get_length()} glitching length cycles")
                     successes.append({ "delay": parameters.get_delay(), "length": parameters.get_length() })
+                parameters.stop_background_listener()
 except KeyboardInterrupt:
-    logging.info("Ending tool.")
+    logging.critical("Ending tool.")
 finally:
     # Close the serial when done
     parameters.close()
     target.close()
     SESSION.close()
 
-logging.info("Finished run, results:")
+logging.critical("Finished run, results:")
 for success in successes:
     logging.critical(f"Delay: {success['delay']}\nLength: {success['length']}")
