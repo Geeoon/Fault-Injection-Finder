@@ -36,26 +36,29 @@ class FPGAParameters():
     def serialize_delay(self) -> bytes:
         out = b''
         for b in struct.pack(">I", self.get_delay()):
-            out += b'\0'
-            out += b
+            out += b'\xFF'
+            out += b.to_bytes(1)
+        return out
 
     def serialize_length(self) -> bytes:
-        return b'\xFF' + struct.pack(">B", self.get_length())
+        return b'\x00' + struct.pack(">B", self.get_length())
 
     def serialize(self) -> bytes:
         """
         Serializes the FPGAParameters to be sent over UART
         """
         # send the delay, then the length, then reset it
-        return (0b10101010).to_bytes(1) + self.serialize_delay() + self.serialize_length()
+        print(self.get_delay(), self.serialize_delay())
+        print(self.get_length(), self.serialize_length())
+        return b'\xaa' + self.serialize_delay() + self.serialize_length()
 
     def send(self):
         """
         Sends the serialized parameters to the FPGA and waits for an ACK
         """
         for b in self.serialize():
-            self.logger.info(f"Sending {packet} to the FPGA")
-            self.ser.write(packet)
+            self.logger.info(f"Sending {b.to_bytes(1)} to the FPGA")
+            self.ser.write(b.to_bytes(1))
             res = self.ser.read()
             self.logger.info(f"Got {res} from the FPGA")
             if not res:
@@ -100,6 +103,17 @@ class FPGAParameters():
         self.logger.info("Closing the FGPA serial connection")
         self.ser.close()
 
+    def test(self):
+        self.ser.reset_input_buffer()
+        self.ser.write(b'\x00')
+        self.ser.flush()
+        print(self.ser.read(1))
+        time.sleep(.05)
+        self.ser.reset_input_buffer()
+        self.ser.write(b'\xa5')
+        self.ser.flush()
+        print(self.ser.read(1))
+
 
 class TargetDevice():
     def __init__(self, expected_output: bytes, port: str, baud: int=115200, timeout: int=1):
@@ -141,6 +155,7 @@ class TargetDevice():
         self.ser.close()
 
 
+
 SESSION = ConnectHelper.session_with_chosen_probe(target_override="mspm0l2228")
 SESSION.open()
 OCD_TARGET = SESSION.board.target
@@ -172,7 +187,10 @@ with open('./exported.pkl', 'rb') as f:  # TODO: make this a command line argume
 
 target = TargetDevice(expected_output=expected, port='/dev/ttyACM0', baud=115200, timeout=1)
 target.set_setup_callback(setup_device)
-parameters = FPGAParameters(port='/dev/', baud=115200)  # TODO: change to be the actual FPGA port
+parameters = FPGAParameters(port='/dev/ttyUSB0', baud=115200)  # TODO: change to be the actual FPGA port
+
+# parameters.test()
+# quit()
 
 current_glitch = options[0]
 parameters.delay = current_glitch['cycles_after_trigger'][1]
