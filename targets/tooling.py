@@ -64,7 +64,6 @@ class FPGAParameters():
             self.ser.flush()
             res = self.ser.read()
             self.logger.debug(f"Got {res} from the FPGA")
-            # time.sleep(.05)
             if not res:
                 raise Exception("FPGA timed out")
     
@@ -128,42 +127,6 @@ class FPGAParameters():
             if len(msg) != 0:
                 self.logger.info(f"FPGA background thread got {msg}")
 
-    # def test(self):
-    #     # reset
-    #     self.ser.reset_input_buffer()
-    #     self.ser.write(b'\xaa')
-    #     self.ser.flush()
-    #     print(self.ser.read(1))
-    #     time.sleep(.05)
-
-    #     # send delay
-    #     # header
-    #     self.ser.reset_input_buffer()
-    #     self.ser.write(b'\xFF')
-    #     self.ser.flush()
-    #     print(self.ser.read(1))
-    #     time.sleep(.05)
-    #     for _ in range(4):
-    #         self.ser.reset_input_buffer()
-    #         self.ser.write(b'\x00')
-    #         self.ser.flush()
-    #         print(self.ser.read(1))
-    #         time.sleep(.05)
-
-    #     # send length
-    #     # header
-    #     self.ser.reset_input_buffer()
-    #     self.ser.write(b'\x00')
-    #     self.ser.flush()
-    #     print(self.ser.read(1))
-    #     time.sleep(.05)
-    #     # data
-    #     self.ser.reset_input_buffer()
-    #     self.ser.write(b'\xa5')
-    #     self.ser.flush()
-    #     print(self.ser.read(1))
-
-
 class TargetDevice():
     def __init__(self, expected_output: bytes, port: str, baud: int=115200, timeout: int=1):
         """
@@ -204,9 +167,7 @@ class TargetDevice():
         self.logger.info("Closing serial connection")
         self.ser.close()
 
-
-
-SESSION = ConnectHelper.session_with_chosen_probe(target_override="mspm0l2228")
+SESSION = ConnectHelper.session_with_chosen_probe(target_override="mspm0l2228")  # NOTE: change board here
 SESSION.open()
 OCD_TARGET = SESSION.board.target
 
@@ -242,29 +203,27 @@ def setup_device(ser: serial.Serial, program_input: bytes):
     ser.reset_output_buffer()
     ser.reset_input_buffer()
     parameters.send()  # also resets the board
-    # time.sleep(0.05)  # wait for stuff to send over
     parameters.start_background_listener()
     ser.write(program_input)
 
 target.set_setup_callback(setup_device)
 
-current_glitch = options[0]
-parameters.delay = current_glitch['cycles_after_trigger'][1]
-parameters.length = 5
+parameters.length = 5  # NOTE: this depends on your target's clock speed
 successes = []
+
 try:
-    # send the parameters to the FPGA
-    for delay_delta in range(-10, 11):  # -10 to 10, going by 1
-        for length in range(-2, 3):  # -2 to 2, going by 1
-            parameters.set_delay_delta(delay_delta)
-            parameters.set_length_delta(length)
-            
-            logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
-            for _ in range(TRIALS):
-                if target.run(current_glitch['input']):
-                    logging.critical(f"Successful fault with {parameters.get_delay()} delay cycles with {parameters.get_length()} glitching length cycles")
-                    successes.append({ "delay": parameters.get_delay(), "length": parameters.get_length() })
-                parameters.stop_background_listener()
+    for current_glitch in options:
+        parameters.delay = current_glitch['cycles_after_trigger'][1]  # NOTE: only trying most likely
+        for delay_delta in range(-10, 11):  # -10 to 10, going by 1
+            for length in range(-2, 3):  # -2 to 2, going by 1
+                parameters.set_delay_delta(delay_delta)
+                parameters.set_length_delta(length)
+                logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
+                for _ in range(TRIALS):
+                    if target.run(current_glitch['input']):
+                        logging.critical(f"Successful fault with {parameters.get_delay()} delay cycles with {parameters.get_length()} glitching length cycles")
+                        successes.append({ "delay": parameters.get_delay(), "length": parameters.get_length() })
+                    parameters.stop_background_listener()
 except KeyboardInterrupt:
     logging.critical("Ending tool.")
 finally:
