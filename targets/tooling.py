@@ -49,7 +49,7 @@ class FPGAParameters():
         """
         Serializes the FPGAParameters to be sent over UART
         """
-        # send the delay, then the length, then reset it
+        # reset it then send the delay and the length
         return b'\xaa' + self.serialize_delay() + self.serialize_length()
 
     def send(self):
@@ -180,10 +180,10 @@ logging.basicConfig(
 )
 
 # get the expected output from file
-with open('./password/password.bin', 'rb') as f:  # TODO: make this a command line argument
+with open('./password/password.bin', 'rb') as f:  # NOTE: change the expected output here
     expected = f.read()
 # get the glitch parameters
-with open('./password/exported.pkl', 'rb') as f:  # TODO: make this a command line argument
+with open('./password/exported.pkl', 'rb') as f:  # TODO: change the exported faults found here
     options = pickle.load(f)
 
 target = TargetDevice(expected_output=expected, port='/dev/ttyACM0', baud=115200, timeout=1)

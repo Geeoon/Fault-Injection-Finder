@@ -1,37 +1,82 @@
 # Fault Injection Finder
-## Geeoon Chung and Nate Snyder
-This project is being developed for our EE 470 project.
+### Geeoon Chung and Nate Snyder
+This repository is the software side of our fault injection attack project.  For the hardware side, check out [this repo](https://github.com/Ice-Skates/voltage_glitch).
 
-The goals of this project are two part:
-1. Develop a program that can find instructions that can be skipped to cause security issues.
-2. Run the program on a CPU (likely from an FPGA) and perform the faults
+## Overall Project
+The goal of this project is to find instructions in a program's execution that, when skipped/NOP'd, cause security issues.
+1. Pre-processing
+    1. Load the binary
+    2. Identify instructions that are more likely to cause security issues when NOP'd.
+2. Unicorn Emulation
+    1. Run the program, NOP'ing the nth instruction issued.
+    2. Check the output of the program to see if a security fault occured.
+        1. If an invalid fetch occured, flip all the bits of the input to the program.
+        2. Re-run the program.
+        3. If an invalid fetch at a different address occured, take note.  This means that the input to the program is capable of influencing the program counter (i.e., control of the PC).
+3. Angr SMT Solving
+    1. If the Unicorn emulation indicated control of the PC, run the program with symbolic inputs and skip the instruction issue from the Unicorn step.
+    2. See if we eventually get a symbolic variable into the PC register.
+    3. Solve for a custom PC value to see what input we need to get our PC to a specific address.
+    4. If it can be solved for, take note of the input that resulted in to specified PC.
+4. Export interesting instructions
 
+## Details
 We search for security issues by doing one or more of the following:
 1. Checking the IO output of the program
 2. Checking the exit code of the program
-3. Checking the state of the registers at the end of the program
 4. Manually adding fault triggers into the "unreachable" parts of the code
 5. Performing taint checking to see if the program counter (PC) is able to be modified
-6. Using angr to solve for inputs that result user specified PC values
+6. Using angr (SMT solver) to solve for inputs that result user specified PC values
 
-To inject faults, we could do following:
-1. Perform reset glitches
-2. Perform voltage glitches
-3. Perform EMI glitches
-4. Perform clock glitching
+## Glitching
+To inject faults, we chose to do crowbar glitching.  This was achieved using an FGPA with an SI 2302 N-channel MOSFET.  Here's a link to our FPGA tooling.  More information can be found in `targets`.
 
-For triggers, we could do the following:
-1. Power analysis
-2. IO accesses
-3. Count clock cycles
+## Triggers
+For triggers, we chose to use a GPIO input to an FPGA.  In the test code, we toggle an LED, though you could perform power analysis to for your triggers
+
+## Usage
+```
+usage: main.py [-h] [-s INDEX] [-i MAX_ITERATIONS] [-o EXPECTED_OUTPUT] [-e EXPECTED_EXIT] [-d DESIRED_PC] [-v] [-n] [-t TYPES] [-b BINARY_ADDR]
+               [-u OUTPUT_DIR] [-f BEGIN_ADDR] [-g END_ADDR]
+               binary_path input_path
+
+Automatically finds hardware security vulnerabilities in binaries. Only support ARM.
+
+positional arguments:
+  binary_path           The binary to examine
+  input_path            The path to the input to the program
+
+options:
+  -h, --help            show this help message and exit
+  -s, --simulate INDEX  Runs a Unicorn simulation with the fault at an nth instruction issue. Ignores all other flags besides --max_iterations and
+                        --verbose.
+  -i, --max-iterations MAX_ITERATIONS
+                        The maximum number of instructions to run in the binary before ending early
+  -o, --expected-output EXPECTED_OUTPUT
+                        The expected output of the program on a successful security incident
+  -e, --expected-exit EXPECTED_EXIT
+                        The expected exit of the program on a successful security incident
+  -d, --desired-pc DESIRED_PC
+                        The program counter we desire to achieve if possible. In hex or decimal. Keep in mind that this is the absolute address,
+                        not relative to the binary.
+  -v, --verbose         Verbosity: warning, info, debug
+  -n, --no-thumb        Whether or not to run in thumb mode
+  -t, --types TYPES     Which types of instructions to focus on. 0) Brute force: every issue. 1) Recommended defaults. 2) Only conditional
+                        branches. 3) Only compare/tests. 4) Only returns. 5) Only branches, calls, returns, and compares
+  -b, --binary-addr BINARY_ADDR
+                        The address to flash the binary to. Defaults to 0x1000000. Can be in hex or decimal.
+  -u, --output-dir OUTPUT_DIR
+                        The directory to store faults that were found.
+  -f, --begin-addr BEGIN_ADDR
+                        The starting address of the instructions that should be considered for skipping. (inclusive.) If set, -g must also be set.
+  -g, --end-addr END_ADDR
+                        The ending address of the instructions that should be considered for skipping. (inclusive.) If set, -f must also be set.
+```
+
+## Limitations
+For now, this program only supports the ARM instruction set.  It supports both thumb and non-thumb modes.
 
 # Notes
-`arm-none-eabi-objdump -D -b binary -m arm <binary> | less` to examine the raw binary as assembly
-
-`arm-none-eabi-objdump -D -b binary -m arm -M force-thumb --architecture=armv6 sha256.bin | less` for ARMv6 Thumb
-
-`arm-none-eabi-objdump -D -m arm -M force-thumb --architecture=armv6 aes_ecb.bin | less` for ARMv6 Thumb ELFs
-
 ## Running Binaries
 The code included in `binaries/sources` are simply for testing.  They do not target any real hardware and are strictly for testing the tool.
 
@@ -39,5 +84,13 @@ To run a specific binary targeting a device, you need to extract the relevant pa
 
 For a specific example, check out the targets directory where we show this process on the TIMSPM0L2228.
 
-### Compiling From Source
+## Compiling From Source
 You must have the same version compiler and the same compilation flags/steps to create a binary that reflects the binary running on the target.  If you are creating your own programs and testing them, this is fine.  But if you only have the source code for the target which you are attacking, it is not likely you will be able to compile down to the exact binary that is running.  So it is recommended to use the exact binary running on your target whenever possible.
+
+<!-- 
+`arm-none-eabi-objdump -D -b binary -m arm <binary> | less` to examine the raw binary as assembly
+
+`arm-none-eabi-objdump -D -b binary -m arm -M force-thumb --architecture=armv6 sha256.bin | less` for ARMv6 Thumb
+
+`arm-none-eabi-objdump -D -m arm -M force-thumb --architecture=armv6 aes_ecb.bin | less` for ARMv6 Thumb ELFs
+-->
