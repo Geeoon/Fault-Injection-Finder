@@ -27,10 +27,9 @@ The goal of this project is to find instructions in a program's execution that, 
 4. Export interesting instructions
 5. Test the instructions on the target using the `targets/tooling.py` script and an FPGA.
 
-[Here's a presentation we gave for this project.]()
+[Flow chart for the software](https://raw.githubusercontent.com/Geeoon/Fault-Injection-Finder/refs/heads/main/470_FlowChart.png)
 
-Flow chart included in the presentation:
-
+[A presentation we gave for this project](https://github.com/Geeoon/Fault-Injection-Finder/blob/main/EE%20470%20Project%20Presentation.pdf)
 
 ## Details
 We search for security issues by doing one or more of the following:
@@ -47,6 +46,8 @@ To inject faults, we chose to do crowbar glitching.  This was achieved using an 
 For triggers, we chose to use a GPIO input to an FPGA.  In the test code, we toggle an LED, though you could perform power analysis to for your triggers
 
 ## Usage
+### Dependencies
+The dependencies are listed in the `requirements.txt`.  Install them with `pip install -r requirements.txt`.
 ```
 usage: main.py [-h] [-s INDEX] [-i MAX_ITERATIONS] [-o EXPECTED_OUTPUT] [-e EXPECTED_EXIT] [-d DESIRED_PC] [-v] [-n] [-t TYPES] [-b BINARY_ADDR]
                [-u OUTPUT_DIR] [-f BEGIN_ADDR] [-g END_ADDR]
@@ -85,8 +86,23 @@ options:
                         The ending address of the instructions that should be considered for skipping. (inclusive.) If set, -f must also be set.
 ```
 
+### Example Usage
+#### Output Checking
+`python3 main.py ./binaries/sha256.bin ./inputs/sha256.bin -o ./expecteds/sha256.bin -v`
+
+Checks the output to see if we achieved our attack goals.
+#### Program Counter Control
+`python3 main.py ./binaries/aes_ecb.bin ./inputs/aes_ecb.bin -d 0x100045c -v -u outputs/aes_ecb`
+
+Tests the aes_ecb binary to jump to a custom "unreachable" function and store the inputs inputs into a directory.
+#### Testing a Glitch in Simulation
+`python3 main.py ./binaries/aes_ecb.bin ./outputs/aes_ecb/solved_pc_188.bin -s 188`
+
+Run Unicorn simulation for this specific glitch cycle and input.  In this case, the output from the program counter control.
+
 ## Limitations
-For now, this program only supports the ARM instruction set.  It supports both thumb and non-thumb modes.
+1. For now, this program only supports the ARM instruction set.  It supports both thumb and non-thumb modes.
+2. Some binaries perform very complex operations on the input (like hashing), which make the SMT solver slow down.
 
 # Notes
 ## Running Binaries
@@ -104,5 +120,5 @@ You must have the same version compiler and the same compilation flags/steps to 
 
 `arm-none-eabi-objdump -D -b binary -m arm -M force-thumb --architecture=armv6 sha256.bin | less` for ARMv6 Thumb
 
-`arm-none-eabi-objdump -D -m arm -M force-thumb --architecture=armv6 aes_ecb.bin | less` for ARMv6 Thumb ELFs
+`arm-none-eabi-objdump -D -m arm -M force-thumb --architecture=armv6 aes_ecb.elf | less` for ARMv6 Thumb ELFs
 -->
