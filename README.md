@@ -6,7 +6,7 @@
                 ▙▌                         
 ```
 ### Geeoon Chung and Nate Snyder
-This repository is the software side of our fault injection attack project.  For the hardware side, check out [this repo](https://github.com/Ice-Skates/voltage_glitch).
+This repository is the software side of our fault injection attack project.  For the hardware side, check out [this repo](https://github.com/Ice-Skates/voltage\_glitch).
 
 ## Overall Project
 The goal of this project is to find instructions in a program's execution that, when skipped/NOP'd, cause security issues.
