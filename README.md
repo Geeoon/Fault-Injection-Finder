@@ -1,4 +1,10 @@
 # Fault Injection Finder
+```
+▄▖    ▜ ▗   ▄▖   ▘    ▗ ▘      ▄▖▘   ▌     
+▙▖▀▌▌▌▐ ▜▘  ▐ ▛▌ ▌█▌▛▘▜▘▌▛▌▛▌  ▙▖▌▛▌▛▌█▌▛▘ 
+▌ █▌▙▌▐▖▐▖  ▟▖▌▌ ▌▙▖▙▖▐▖▌▙▌▌▌  ▌ ▌▌▌▙▌▙▖▌  
+                ▙▌                         
+```
 ### Geeoon Chung and Nate Snyder
 This repository is the software side of our fault injection attack project.  For the hardware side, check out [this repo](https://github.com/Ice-Skates/voltage_glitch).
 
@@ -19,6 +25,12 @@ The goal of this project is to find instructions in a program's execution that, 
     3. Solve for a custom PC value to see what input we need to get our PC to a specific address.
     4. If it can be solved for, take note of the input that resulted in to specified PC.
 4. Export interesting instructions
+5. Test the instructions on the target using the `targets/tooling.py` script and an FPGA.
+
+[Here's a presentation we gave for this project.]()
+
+Flow chart included in the presentation:
+
 
 ## Details
 We search for security issues by doing one or more of the following:
