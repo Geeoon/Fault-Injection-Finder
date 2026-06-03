@@ -6,7 +6,7 @@
                 ▙▌                         
 ```
 ### Geeoon Chung and Nate Snyder
-This repository is the software side of our fault injection attack project.  For the hardware side, check out [this repo](https://github.com/Ice-Skates/voltage\_glitch).
+This repository is the software side of our fault injection attack project.  For the hardware side, check out [this repo](https://github.com/Ice-Skates/voltage_glitch).
 
 ## Overall Project
 The goal of this project is to find instructions in a program's execution that, when skipped/NOP'd, cause security issues.
@@ -40,7 +40,7 @@ We search for security issues by doing one or more of the following:
 6. Using angr (SMT solver) to solve for inputs that result user specified PC values
 
 ## Glitching
-To inject faults, we chose to do crowbar glitching.  This was achieved using an FGPA with an SI 2302 N-channel MOSFET.  (Here's a link to our FPGA tooling.)[https://github.com/Ice-Skates/voltage_glitch]  More information can be found in `targets`.
+To inject faults, we chose to do crowbar glitching.  This was achieved using an FGPA with an SI 2302 N-channel MOSFET.  [Here's a link to our FPGA tooling.](https://github.com/Ice-Skates/voltage_glitch)  More information can be found in `targets`.
 
 ## Triggers
 For triggers, we chose to use a GPIO input to an FPGA.  In the test code, we toggle an LED, though you could perform power analysis to for your triggers
