@@ -39,16 +39,16 @@ main:
 	.cfi_def_cfa_offset 8
 	.cfi_offset lr, -4
 	.cfi_offset r4, -8
-	.pad	#8
-	sub	sp, #8
-	.cfi_def_cfa_offset 16
+	.pad	#16
+	sub	sp, #16
+	.cfi_def_cfa_offset 24
 .Ltmp0:
 	bl	init_device
 .Ltmp1:
 	movs	r0, #0
-	str	r0, [sp, #4]
+	str	r0, [sp, #8]
 .Ltmp2:
-	ldr	r0, [sp, #4]
+	ldr	r0, [sp, #8]
 .Ltmp3:
 	cmp	r0, #0
 	beq	.LBB0_2
@@ -58,42 +58,57 @@ main:
 .Ltmp5:
 .LBB0_2:
 	movs	r0, #1
-	str	r0, [sp]
+	str	r0, [sp, #4]
 .LBB0_3:                                @ =>This Inner Loop Header: Depth=1
-	ldr	r0, [sp]
+	ldr	r0, [sp, #4]
 	cmp	r0, #0
 	beq	.LBB0_7
 @ %bb.4:                                @   in Loop: Header=BB0_3 Depth=1
+	movs	r0, #0
+	add	r1, sp, #12
+	movs	r2, #1
 .Ltmp6:
-	bl	led_blip
+	bl	_read
 .Ltmp7:
-	ldr	r0, [sp]
+	bl	led_blip
+.Ltmp8:
+	ldr	r0, [sp, #4]
 	cmp	r0, #0
 	beq	.LBB0_7
 @ %bb.5:                                @   in Loop: Header=BB0_3 Depth=1
-.Ltmp8:
-	bl	led_blip
+	movs	r0, #0
+	add	r1, sp, #12
+	movs	r2, #1
 .Ltmp9:
-	ldr	r0, [sp]
-	cmp	r0, #0
-	beq	.LBB0_7
-@ %bb.6:                                @   in Loop: Header=BB0_3 Depth=1
+	bl	_read
 .Ltmp10:
 	bl	led_blip
 .Ltmp11:
-	b	.LBB0_3
+	ldr	r0, [sp, #4]
+	cmp	r0, #0
+	beq	.LBB0_7
+@ %bb.6:                                @   in Loop: Header=BB0_3 Depth=1
+	movs	r0, #0
+	add	r1, sp, #12
+	movs	r2, #1
 .Ltmp12:
+	bl	_read
+.Ltmp13:
+	bl	led_blip
+.Ltmp14:
+	b	.LBB0_3
+.Ltmp15:
 .LBB0_7:
 	ldr	r1, .LCPI0_0
 	movs	r4, #0
 	movs	r2, #16
 	mov	r0, r4
 	bl	_write
-.Ltmp13:
+.Ltmp16:
 	mov	r0, r4
-	add	sp, #8
+	add	sp, #16
 	pop	{r4, pc}
-.Ltmp14:
+.Ltmp17:
 	.p2align	2
 @ %bb.8:
 .LCPI0_0:
@@ -258,7 +273,7 @@ main:
 	.short	3                               @ DWARF version number
 	.long	.debug_abbrev                   @ Offset Into Abbrev. Section
 	.byte	4                               @ Address Size (in bytes)
-	.byte	1                               @ Abbrev [1] 0xb:0xd1 DW_TAG_compile_unit
+	.byte	1                               @ Abbrev [1] 0xb:0xfd DW_TAG_compile_unit
 	.long	.Linfo_string0                  @ DW_AT_producer
 	.short	29                              @ DW_AT_language
 	.long	.Linfo_string1                  @ DW_AT_name
@@ -269,7 +284,7 @@ main:
 	.byte	2                               @ Abbrev [2] 0x26:0xd DW_TAG_variable
 	.long	51                              @ DW_AT_type
 	.byte	1                               @ DW_AT_decl_file
-	.byte	18                              @ DW_AT_decl_line
+	.byte	21                              @ DW_AT_decl_line
 	.byte	5                               @ DW_AT_location
 	.byte	3
 	.long	.L.str
@@ -296,64 +311,84 @@ main:
 	.long	.Linfo_string5                  @ DW_AT_name
 	.byte	7                               @ DW_AT_encoding
 	.byte	4                               @ DW_AT_byte_size
-	.byte	8                               @ Abbrev [8] 0x5f:0x70 DW_TAG_subprogram
+	.byte	8                               @ Abbrev [8] 0x5f:0x9c DW_TAG_subprogram
 	.long	.Lfunc_begin0                   @ DW_AT_low_pc
 	.long	.Lfunc_end0                     @ DW_AT_high_pc
 	.byte	1                               @ DW_AT_frame_base
 	.byte	93
-	.byte	16                              @ DW_AT_TI_max_frame_size
-	.long	.Linfo_string11                 @ DW_AT_name
+	.byte	24                              @ DW_AT_TI_max_frame_size
+	.long	.Linfo_string12                 @ DW_AT_name
 	.byte	1                               @ DW_AT_decl_file
-	.byte	8                               @ DW_AT_decl_line
-	.long	207                             @ DW_AT_type
+	.byte	9                               @ DW_AT_decl_line
+	.long	251                             @ DW_AT_type
 	.byte	1                               @ DW_AT_external
 	.byte	9                               @ Abbrev [9] 0x76:0xe DW_TAG_variable
 	.byte	2                               @ DW_AT_location
 	.byte	145
-	.byte	4
-	.long	.Linfo_string13                 @ DW_AT_name
+	.byte	12
+	.long	.Linfo_string14                 @ DW_AT_name
 	.byte	1                               @ DW_AT_decl_file
-	.byte	11                              @ DW_AT_decl_line
-	.long	214                             @ DW_AT_type
+	.byte	12                              @ DW_AT_decl_line
+	.long	63                              @ DW_AT_type
 	.byte	9                               @ Abbrev [9] 0x84:0xe DW_TAG_variable
 	.byte	2                               @ DW_AT_location
 	.byte	145
-	.byte	0
-	.long	.Linfo_string14                 @ DW_AT_name
+	.byte	8
+	.long	.Linfo_string15                 @ DW_AT_name
 	.byte	1                               @ DW_AT_decl_file
-	.byte	14                              @ DW_AT_decl_line
-	.long	214                             @ DW_AT_type
-	.byte	10                              @ Abbrev [10] 0x92:0xa DW_TAG_TI_reserved_3
+	.byte	13                              @ DW_AT_decl_line
+	.long	258                             @ DW_AT_type
+	.byte	9                               @ Abbrev [9] 0x92:0xe DW_TAG_variable
+	.byte	2                               @ DW_AT_location
+	.byte	145
+	.byte	4
+	.long	.Linfo_string16                 @ DW_AT_name
+	.byte	1                               @ DW_AT_decl_file
+	.byte	16                              @ DW_AT_decl_line
+	.long	258                             @ DW_AT_type
+	.byte	10                              @ Abbrev [10] 0xa0:0xa DW_TAG_TI_reserved_3
 	.long	.Ltmp1                          @ DW_AT_low_pc
 	.byte	1                               @ DW_AT_TI_reserved_9
 	.long	.Linfo_string7                  @ DW_AT_name
-	.byte	10                              @ Abbrev [10] 0x9c:0xa DW_TAG_TI_reserved_3
+	.byte	10                              @ Abbrev [10] 0xaa:0xa DW_TAG_TI_reserved_3
 	.long	.Ltmp5                          @ DW_AT_low_pc
 	.byte	1                               @ DW_AT_TI_reserved_9
 	.long	.Linfo_string8                  @ DW_AT_name
-	.byte	10                              @ Abbrev [10] 0xa6:0xa DW_TAG_TI_reserved_3
+	.byte	10                              @ Abbrev [10] 0xb4:0xa DW_TAG_TI_reserved_3
 	.long	.Ltmp7                          @ DW_AT_low_pc
 	.byte	1                               @ DW_AT_TI_reserved_9
 	.long	.Linfo_string9                  @ DW_AT_name
-	.byte	10                              @ Abbrev [10] 0xb0:0xa DW_TAG_TI_reserved_3
-	.long	.Ltmp9                          @ DW_AT_low_pc
-	.byte	1                               @ DW_AT_TI_reserved_9
-	.long	.Linfo_string9                  @ DW_AT_name
-	.byte	10                              @ Abbrev [10] 0xba:0xa DW_TAG_TI_reserved_3
-	.long	.Ltmp11                         @ DW_AT_low_pc
-	.byte	1                               @ DW_AT_TI_reserved_9
-	.long	.Linfo_string9                  @ DW_AT_name
-	.byte	10                              @ Abbrev [10] 0xc4:0xa DW_TAG_TI_reserved_3
-	.long	.Ltmp13                         @ DW_AT_low_pc
+	.byte	10                              @ Abbrev [10] 0xbe:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp8                          @ DW_AT_low_pc
 	.byte	1                               @ DW_AT_TI_reserved_9
 	.long	.Linfo_string10                 @ DW_AT_name
+	.byte	10                              @ Abbrev [10] 0xc8:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp10                         @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string9                  @ DW_AT_name
+	.byte	10                              @ Abbrev [10] 0xd2:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp11                         @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string10                 @ DW_AT_name
+	.byte	10                              @ Abbrev [10] 0xdc:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp13                         @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string9                  @ DW_AT_name
+	.byte	10                              @ Abbrev [10] 0xe6:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp14                         @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string10                 @ DW_AT_name
+	.byte	10                              @ Abbrev [10] 0xf0:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp16                         @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string11                 @ DW_AT_name
 	.byte	0                               @ End Of Children Mark
-	.byte	5                               @ Abbrev [5] 0xcf:0x7 DW_TAG_base_type
-	.long	.Linfo_string12                 @ DW_AT_name
+	.byte	5                               @ Abbrev [5] 0xfb:0x7 DW_TAG_base_type
+	.long	.Linfo_string13                 @ DW_AT_name
 	.byte	5                               @ DW_AT_encoding
 	.byte	4                               @ DW_AT_byte_size
-	.byte	11                              @ Abbrev [11] 0xd6:0x5 DW_TAG_volatile_type
-	.long	207                             @ DW_AT_type
+	.byte	11                              @ Abbrev [11] 0x102:0x5 DW_TAG_volatile_type
+	.long	251                             @ DW_AT_type
 	.byte	0                               @ End Of Children Mark
 .Ldebug_info_end0:
 	.section	.debug_str,"MS",%progbits,1
@@ -376,17 +411,21 @@ main:
 .Linfo_string8:
 	.asciz	"pwned"                         @ string offset=277
 .Linfo_string9:
-	.asciz	"led_blip"                      @ string offset=283
+	.asciz	"_read"                         @ string offset=283
 .Linfo_string10:
-	.asciz	"_write"                        @ string offset=292
+	.asciz	"led_blip"                      @ string offset=289
 .Linfo_string11:
-	.asciz	"main"                          @ string offset=299
+	.asciz	"_write"                        @ string offset=298
 .Linfo_string12:
-	.asciz	"int"                           @ string offset=304
+	.asciz	"main"                          @ string offset=305
 .Linfo_string13:
-	.asciz	"lol"                           @ string offset=308
+	.asciz	"int"                           @ string offset=310
 .Linfo_string14:
-	.asciz	"dummy"                         @ string offset=312
+	.asciz	"temp"                          @ string offset=314
+.Linfo_string15:
+	.asciz	"lol"                           @ string offset=319
+.Linfo_string16:
+	.asciz	"dummy"                         @ string offset=323
 	.ident	"TI clang version 18.1.8 (ssh://git@bitbucket.itg.ti.com/code/llvm-project.git 41ce286cff6db007d382d297353d8bf884b450b7)"
 	.section	".note.GNU-stack","",%progbits
 	.eabi_attribute	30, 1	@ Tag_ABI_optimization_goals

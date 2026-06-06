@@ -3,6 +3,7 @@
 extern void init_device(void);
 extern int _read(int fd, char* buf, int len);
 extern void pwned(void);
+extern void led_blip(void);
 
 int main(void) {
     init_device();
@@ -16,6 +17,7 @@ int main(void) {
     // get data
     int n = _read(0, data, AES_BLOCK_SIZE);
 
+    led_blip();
     // encrypt data
     AES_EncryptInit(&ctx, key);
     AES_Encrypt(&ctx, data, data);
