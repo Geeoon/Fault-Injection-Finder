@@ -72,7 +72,7 @@ class FPGAParameters():
         Sets the delta for the delay
         :param delta: the new delta in terms of the FPGA's clock cycles
         """
-        if round(self.delay * (self.fpga_speed / self.target_speed) + self.delay_delta) < 0:
+        if round(self.delay * (self.fpga_speed / self.target_speed) + delta) < 0:
             raise ValueError("Delta cannot be less than the current delay")
         self.delay_delta = delta
 
@@ -121,11 +121,11 @@ class FPGAParameters():
         self.bg_thread = None
 
     def _bg_thread(self):
-        self.logger.info("Starting the FPGA background thread")
+        self.logger.debug("Starting the FPGA background thread")
         while self.bg_thread_running:
             msg = self.ser.read_all()
             if len(msg) != 0:
-                self.logger.info(f"FPGA background thread got {msg}")
+                self.logger.debug(f"FPGA background thread got {msg}")
 
 class TargetDevice():
     def __init__(self, expected_output: bytes, port: str, baud: int=115200, timeout: int=1):
@@ -180,11 +180,14 @@ logging.basicConfig(
 )
 
 # get the expected output from file
-with open('./password/password.bin', 'rb') as f:  # NOTE: change the expected output here
+with open('./timspm0l2228/infinite_loop/expected.bin', 'rb') as f:  # NOTE: change the expected output here
     expected = f.read()
 # get the glitch parameters
-with open('./password/exported.pkl', 'rb') as f:  # TODO: change the exported faults found here
+with open('./timspm0l2228/infinite_loop/exported.pkl', 'rb') as f:  # TODO: change the exported faults found here
     options = pickle.load(f)
+
+# only supports index = 0 (i.e, first after the trigger), so clear those where index != 0
+options = [option for option in options if option.get("index") == 0]
 
 target = TargetDevice(expected_output=expected, port='/dev/ttyACM0', baud=115200, timeout=1)
 parameters = FPGAParameters(port='/dev/ttyUSB0', baud=115200)
@@ -198,7 +201,7 @@ def setup_device(ser: serial.Serial, program_input: bytes):
     # reset the device
     # subprocess.run(["dslite", "-c", "MSPM0L2228.ccxml", "-r", "1"], stdout=subprocess.DEVNULL)  # backup if pyocd doens't work
     OCD_TARGET.dp.reset()  # send reset via OCD
-    time.sleep(.05)  # wait for reset to complete
+    time.sleep(.1)  # wait for reset to complete
     # clear buffers for a fresh start
     ser.reset_output_buffer()
     ser.reset_input_buffer()
@@ -213,17 +216,19 @@ successes = []
 
 try:
     for current_glitch in options:
-        parameters.delay = current_glitch['cycles_after_trigger'][1]  # NOTE: only trying most likely
-        for delay_delta in range(-10, 11):  # -10 to 10, going by 1
-            for length in range(-2, 3):  # -2 to 2, going by 1
-                parameters.set_delay_delta(delay_delta)
-                parameters.set_length_delta(length)
-                logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
-                for _ in range(TRIALS):
-                    if target.run(current_glitch['input']):
-                        logging.critical(f"Successful fault with {parameters.get_delay()} delay cycles with {parameters.get_length()} glitching length cycles")
-                        successes.append({ "delay": parameters.get_delay(), "length": parameters.get_length() })
-                    parameters.stop_background_listener()
+        # give an extra 5 target cycles
+        for delay in range(current_glitch['cycles_after_trigger'][0], current_glitch['cycles_after_trigger'][0] + 5):
+            parameters.delay = delay
+            for delay_delta in range(-3, 4):  # -3 to 3, going by 1
+                for length in range(-2, 3):  # -2 to 2, going by 1
+                    parameters.set_delay_delta(delay_delta)
+                    parameters.set_length_delta(length)
+                    logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
+                    for _ in range(TRIALS):
+                        if target.run(current_glitch['input']):
+                            logging.critical(f"Successful fault with {parameters.get_delay()} delay cycles with {parameters.get_length()} glitching length cycles")
+                            successes.append({ "delay": parameters.get_delay(), "length": parameters.get_length() })
+                        parameters.stop_background_listener()
 except KeyboardInterrupt:
     logging.critical("Ending tool.")
 finally:
