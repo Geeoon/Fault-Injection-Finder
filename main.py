@@ -183,6 +183,8 @@ for fault in faults:
             print(f"Unable to find a suitable input to get the desired PC value")
 
     if estimated_cycles and idx is not None:
+        if pc_control and input_to_pc is None:
+            continue
         exports.append({
             'index': idx,
             'cycles_after_trigger': [estimated_cycles.lower, estimated_cycles.best, estimated_cycles.upper],
