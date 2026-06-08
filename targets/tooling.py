@@ -125,7 +125,7 @@ class FPGAParameters():
         while self.bg_thread_running:
             msg = self.ser.read_all()
             if len(msg) != 0:
-                self.logger.debug(f"FPGA background thread got {msg}")
+                self.logger.info(f"FPGA background thread got {msg}")
 
 class TargetDevice():
     def __init__(self, expected_output: bytes, port: str, baud: int=115200, timeout: int=1):
@@ -158,7 +158,7 @@ class TargetDevice():
         time.sleep(.1)  # waiting for the results of the glitch
         real_output = self.ser.read_all()  # read the results
         self.logger.info(f"Got the following output {real_output}")
-        return self.expected_output in real_output
+        return (self.expected_output in real_output) or (b'pwned!' in real_output)
     
     def close(self):
         """
@@ -180,10 +180,10 @@ logging.basicConfig(
 )
 
 # get the expected output from file
-with open('./timspm0l2228/infinite_loop/expected.bin', 'rb') as f:  # NOTE: change the expected output here
+with open('./timspm0l2228/aes_ecb/expected.bin', 'rb') as f:  # NOTE: change the expected output here
     expected = f.read()
 # get the glitch parameters
-with open('./timspm0l2228/infinite_loop/exported.pkl', 'rb') as f:  # TODO: change the exported faults found here
+with open('./timspm0l2228/aes_ecb/exported.pkl', 'rb') as f:  # TODO: change the exported faults found here
     options = pickle.load(f)
 
 # only supports index = 0 (i.e, first after the trigger), so clear those where index != 0
@@ -201,7 +201,7 @@ def setup_device(ser: serial.Serial, program_input: bytes):
     # reset the device
     # subprocess.run(["dslite", "-c", "MSPM0L2228.ccxml", "-r", "1"], stdout=subprocess.DEVNULL)  # backup if pyocd doens't work
     OCD_TARGET.dp.reset()  # send reset via OCD
-    time.sleep(.1)  # wait for reset to complete
+    time.sleep(.05)  # wait for reset to complete
     # clear buffers for a fresh start
     ser.reset_output_buffer()
     ser.reset_input_buffer()
@@ -213,22 +213,27 @@ target.set_setup_callback(setup_device)
 
 parameters.length = 5  # NOTE: this depends on your target's clock speed
 successes = []
-
+success_rate = []
 try:
     for current_glitch in options:
+        tries = 0
+        successful_glitches = 0
         # give an extra 5 target cycles
-        for delay in range(current_glitch['cycles_after_trigger'][0], current_glitch['cycles_after_trigger'][0] + 5):
+        for delay in range(max(current_glitch['cycles_after_trigger'][0] - 6, 1), current_glitch['cycles_after_trigger'][0] + 5):
             parameters.delay = delay
-            for delay_delta in range(-3, 4):  # -3 to 3, going by 1
+            for delay_delta in range(-6, 1):  # -6 to 0, going by 1
+                parameters.set_delay_delta(delay_delta)
                 for length in range(-2, 3):  # -2 to 2, going by 1
-                    parameters.set_delay_delta(delay_delta)
                     parameters.set_length_delta(length)
                     logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
                     for _ in range(TRIALS):
+                        tries += 1
                         if target.run(current_glitch['input']):
                             logging.critical(f"Successful fault with {parameters.get_delay()} delay cycles with {parameters.get_length()} glitching length cycles")
                             successes.append({ "delay": parameters.get_delay(), "length": parameters.get_length() })
+                            successful_glitches += 1
                         parameters.stop_background_listener()
+        success_rate.append(successful_glitches / tries)
 except KeyboardInterrupt:
     logging.critical("Ending tool.")
 finally:
@@ -238,5 +243,9 @@ finally:
     SESSION.close()
 
 logging.critical("Finished run, results:")
-for success in successes:
-    logging.critical(f"Delay: {success['delay']}\nLength: {success['length']}")
+with open("out.txt", "w") as f:
+    for success in successes:
+        logging.critical(f"Delay: {success['delay']}\nLength: {success['length']}")
+        f.write(f"Delay: {success['delay']}\nLength: {success['length']}\n")
+    print(success_rate)
+    f.write(str(success_rate))
