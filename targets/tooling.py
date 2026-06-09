@@ -202,23 +202,23 @@ target.set_setup_callback(setup_device)
 
 parameters.length = 5  # NOTE: this depends on your target's clock speed
 
-for folder_name in ['', '2', '3', '4', None]:
-    # get the expected output from file
-    if folder_name is None:
-        target.expected_output = b'pwned'  # catch any
-        # since None is last, we can just reuse options from the last loop
-    else:
-        with open(f'./timspm0l2228/aes_ecb/pwned{folder_name}/expected.bin', 'rb') as f:  # NOTE: change the expected output here
-            target.expected_output = f.read()
-        # get the glitch parameters
-        with open(f'./timspm0l2228/aes_ecb/pwned{folder_name}/exported.pkl', 'rb') as f:  # TODO: change the exported faults found here
-            options = pickle.load(f)
-        # only supports index = 0 (i.e, first after the trigger), so clear those where index != 0
-        options = [option for option in options if option.get("index") == 0]
+try:
+    for folder_name in ['', '2', '3', '4', None]:
+        # get the expected output from file
+        if folder_name is None:
+            target.expected_output = b'pwned'  # catch any
+            # since None is last, we can just reuse options from the last loop
+        else:
+            with open(f'./timspm0l2228/aes_ecb/pwned{folder_name}/expected.bin', 'rb') as f:  # NOTE: change the expected output here
+                target.expected_output = f.read()
+            # get the glitch parameters
+            with open(f'./timspm0l2228/aes_ecb/pwned{folder_name}/exported.pkl', 'rb') as f:  # TODO: change the exported faults found here
+                options = pickle.load(f)
+            # only supports index = 0 (i.e, first after the trigger), so clear those where index != 0
+            options = [option for option in options if option.get("index") == 0]
 
-    successes = []
-    success_rate = []
-    try:
+        successes = []
+        success_rate = []
         for current_glitch in options:
             tries = 0
             successful_glitches = 0
@@ -240,21 +240,21 @@ for folder_name in ['', '2', '3', '4', None]:
                                 successful_glitches += 1
                             parameters.stop_background_listener()
             success_rate.append(successful_glitches / tries)
-    except KeyboardInterrupt:
-        logging.critical("Ending tool.")
-    finally:
-        # Close the serial when done
-        parameters.close()
-        target.close()
-        SESSION.close()
 
-    logging.critical("Finished run, results:")
-    with open(f"out{folder_name}.txt", "w") as f:
-        for success in successes:
-            logging.critical(f"Delay: {success['delay']}\nLength: {success['length']}")
-            f.write(f"Delay: {success['delay']}\nLength: {success['length']}\n")
-        print(success_rate)
-        f.write(str(success_rate))
+        logging.critical("Finished run, results:")
+        with open(f"out{folder_name}.txt", "w") as f:
+            for success in successes:
+                logging.critical(f"Delay: {success['delay']}\nLength: {success['length']}")
+                f.write(f"Delay: {success['delay']}\nLength: {success['length']}\n")
+            print(success_rate)
+            f.write(str(success_rate))
+except KeyboardInterrupt:
+    logging.critical("Ending tool.")
+finally:
+    # Close the serial when done
+    parameters.close()
+    target.close()
+    SESSION.close()
 
 """
 #l = len(options[1]['input'])
