@@ -232,7 +232,8 @@ try:
                         logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
                         for _ in range(TRIALS):
                             tries += 1
-                            got_success = target.run(secrets.token_bytes(len(current_glitch['input']))) if folder_name is None else current_glitch['input']
+                            to_dev = secrets.token_bytes(len(current_glitch['input'])) if folder_name is None else current_glitch['input']
+                            got_success = target.run(to_dev)
                             if got_success:
                             # if target.run(b'\xFF' * len(current_glitch['input'])):
                                 logging.critical(f"Successful fault with {parameters.get_delay()} delay cycles with {parameters.get_length()} glitching length cycles")
