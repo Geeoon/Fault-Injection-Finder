@@ -3,12 +3,20 @@
 extern void init_device(void);
 extern int _read(int fd, char* buf, int len);
 extern void pwned(void);
+extern void pwned2(void);
+extern void pwned3(void);
+extern void pwned4(void);
 extern void led_blip(void);
 
 int main(void) {
     init_device();
     volatile int dummy = 0;
-    if (dummy) pwned(); 
+    if (dummy) {
+        pwned();
+        pwned2();
+        pwned3();
+        pwned4();
+    }
     
     AES_CTX ctx;
     const unsigned char key[AES_KEY_SIZE] = { 0xe7, 0x7d, 0xbb, 0xa2, 0x30, 0x9c, 0xdc, 0xa3 };

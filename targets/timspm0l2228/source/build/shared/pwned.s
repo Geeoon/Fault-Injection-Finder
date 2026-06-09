@@ -31,27 +31,186 @@
 	.thumb_func
 pwned:
 .Lfunc_begin0:
+	.loc	1 3 0                           @ shellcode/pwned.c:3:0
 	.fnstart
 	.cfi_sections .debug_frame
 	.cfi_startproc
 @ %bb.0:
-	.loc	1 4 5 prologue_end              @ shellcode/pwned.c:4:5
-	ldr	r1, .LCPI0_0
-	movs	r0, #0
-	movs	r2, #6
-	bl	_write
-.Ltmp0:
+	ldr	r4, .LCPI0_0
 .LBB0_1:                                @ =>This Inner Loop Header: Depth=1
-	.loc	1 5 5                           @ shellcode/pwned.c:5:5
-	b	.LBB0_1
+	movs	r5, #0
+	movs	r6, #6
+.Ltmp0:
+	.loc	1 4 15 prologue_end             @ shellcode/pwned.c:4:15
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
 .Ltmp1:
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
+.Ltmp2:
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
+.Ltmp3:
+	.loc	1 4 5 is_stmt 0                 @ shellcode/pwned.c:4:5
+	b	.LBB0_1
+.Ltmp4:
 	.p2align	2
 @ %bb.2:
-	.loc	1 0 5 is_stmt 0                 @ shellcode/pwned.c:0:5
+	.loc	1 0 5                           @ shellcode/pwned.c:0:5
 .LCPI0_0:
 	.long	.L.str
 .Lfunc_end0:
 	.size	pwned, .Lfunc_end0-pwned
+	.cfi_endproc
+	.cantunwind
+	.fnend
+                                        @ -- End function
+	.section	.text.pwned2,"ax",%progbits
+	.hidden	pwned2                          @ -- Begin function pwned2
+	.globl	pwned2
+	.p2align	2
+	.type	pwned2,%function
+	.code	16                              @ @pwned2
+	.thumb_func
+pwned2:
+.Lfunc_begin1:
+	.loc	1 7 0 is_stmt 1                 @ shellcode/pwned.c:7:0
+	.fnstart
+	.cfi_startproc
+@ %bb.0:
+	ldr	r4, .LCPI1_0
+.LBB1_1:                                @ =>This Inner Loop Header: Depth=1
+	movs	r5, #0
+	movs	r6, #7
+.Ltmp5:
+	.loc	1 8 15 prologue_end             @ shellcode/pwned.c:8:15
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
+.Ltmp6:
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
+.Ltmp7:
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
+.Ltmp8:
+	.loc	1 8 5 is_stmt 0                 @ shellcode/pwned.c:8:5
+	b	.LBB1_1
+.Ltmp9:
+	.p2align	2
+@ %bb.2:
+	.loc	1 0 5                           @ shellcode/pwned.c:0:5
+.LCPI1_0:
+	.long	.L.str.1
+.Lfunc_end1:
+	.size	pwned2, .Lfunc_end1-pwned2
+	.cfi_endproc
+	.cantunwind
+	.fnend
+                                        @ -- End function
+	.section	.text.pwned3,"ax",%progbits
+	.hidden	pwned3                          @ -- Begin function pwned3
+	.globl	pwned3
+	.p2align	2
+	.type	pwned3,%function
+	.code	16                              @ @pwned3
+	.thumb_func
+pwned3:
+.Lfunc_begin2:
+	.loc	1 11 0 is_stmt 1                @ shellcode/pwned.c:11:0
+	.fnstart
+	.cfi_startproc
+@ %bb.0:
+	ldr	r4, .LCPI2_0
+.LBB2_1:                                @ =>This Inner Loop Header: Depth=1
+	movs	r5, #0
+	movs	r6, #7
+.Ltmp10:
+	.loc	1 12 15 prologue_end            @ shellcode/pwned.c:12:15
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
+.Ltmp11:
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
+.Ltmp12:
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
+.Ltmp13:
+	.loc	1 12 5 is_stmt 0                @ shellcode/pwned.c:12:5
+	b	.LBB2_1
+.Ltmp14:
+	.p2align	2
+@ %bb.2:
+	.loc	1 0 5                           @ shellcode/pwned.c:0:5
+.LCPI2_0:
+	.long	.L.str.2
+.Lfunc_end2:
+	.size	pwned3, .Lfunc_end2-pwned3
+	.cfi_endproc
+	.cantunwind
+	.fnend
+                                        @ -- End function
+	.section	.text.pwned4,"ax",%progbits
+	.hidden	pwned4                          @ -- Begin function pwned4
+	.globl	pwned4
+	.p2align	2
+	.type	pwned4,%function
+	.code	16                              @ @pwned4
+	.thumb_func
+pwned4:
+.Lfunc_begin3:
+	.loc	1 15 0 is_stmt 1                @ shellcode/pwned.c:15:0
+	.fnstart
+	.cfi_startproc
+@ %bb.0:
+	ldr	r4, .LCPI3_0
+.LBB3_1:                                @ =>This Inner Loop Header: Depth=1
+	movs	r5, #0
+	movs	r6, #7
+.Ltmp15:
+	.loc	1 16 15 prologue_end            @ shellcode/pwned.c:16:15
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
+.Ltmp16:
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
+.Ltmp17:
+	mov	r0, r5
+	mov	r1, r4
+	mov	r2, r6
+	bl	_write
+.Ltmp18:
+	.loc	1 16 5 is_stmt 0                @ shellcode/pwned.c:16:5
+	b	.LBB3_1
+.Ltmp19:
+	.p2align	2
+@ %bb.2:
+	.loc	1 0 5                           @ shellcode/pwned.c:0:5
+.LCPI3_0:
+	.long	.L.str.3
+.Lfunc_end3:
+	.size	pwned4, .Lfunc_end3-pwned4
 	.cfi_endproc
 	.cantunwind
 	.fnend
@@ -61,6 +220,24 @@ pwned:
 .L.str:
 	.asciz	"pwned!"
 	.size	.L.str, 7
+
+	.type	.L.str.1,%object                @ @.str.1
+	.section	.rodata.str1.2641679613676021314.1,"aMS",%progbits,1
+.L.str.1:
+	.asciz	"pwned2!"
+	.size	.L.str.1, 8
+
+	.type	.L.str.2,%object                @ @.str.2
+	.section	.rodata.str1.7966847511046382108.1,"aMS",%progbits,1
+.L.str.2:
+	.asciz	"pwned3!"
+	.size	.L.str.2, 8
+
+	.type	.L.str.3,%object                @ @.str.3
+	.section	.rodata.str1.15405730187598805421.1,"aMS",%progbits,1
+.L.str.3:
+	.asciz	"pwned4!"
+	.size	.L.str.3, 8
 
 	.section	.debug_abbrev,"",%progbits
 	.byte	1                               @ Abbreviation Code
@@ -78,8 +255,8 @@ pwned:
 	.byte	14                              @ DW_FORM_strp
 	.byte	17                              @ DW_AT_low_pc
 	.byte	1                               @ DW_FORM_addr
-	.byte	18                              @ DW_AT_high_pc
-	.byte	1                               @ DW_FORM_addr
+	.byte	85                              @ DW_AT_ranges
+	.byte	6                               @ DW_FORM_data4
 	.byte	0                               @ EOM(1)
 	.byte	0                               @ EOM(2)
 	.byte	2                               @ Abbreviation Code
@@ -175,14 +352,14 @@ pwned:
 	.short	3                               @ DWARF version number
 	.long	.debug_abbrev                   @ Offset Into Abbrev. Section
 	.byte	4                               @ Address Size (in bytes)
-	.byte	1                               @ Abbrev [1] 0xb:0x62 DW_TAG_compile_unit
+	.byte	1                               @ Abbrev [1] 0xb:0x142 DW_TAG_compile_unit
 	.long	.Linfo_string0                  @ DW_AT_producer
 	.short	29                              @ DW_AT_language
 	.long	.Linfo_string1                  @ DW_AT_name
 	.long	.Lline_table_start0             @ DW_AT_stmt_list
 	.long	.Linfo_string2                  @ DW_AT_comp_dir
-	.long	.Lfunc_begin0                   @ DW_AT_low_pc
-	.long	.Lfunc_end0                     @ DW_AT_high_pc
+	.long	0                               @ DW_AT_low_pc
+	.long	.Ldebug_ranges0                 @ DW_AT_ranges
 	.byte	2                               @ Abbrev [2] 0x26:0xd DW_TAG_variable
 	.long	51                              @ DW_AT_type
 	.byte	1                               @ DW_AT_decl_file
@@ -204,7 +381,34 @@ pwned:
 	.long	.Linfo_string4                  @ DW_AT_name
 	.byte	8                               @ DW_AT_byte_size
 	.byte	7                               @ DW_AT_encoding
-	.byte	7                               @ Abbrev [7] 0x4d:0x1f DW_TAG_subprogram
+	.byte	2                               @ Abbrev [2] 0x4d:0xd DW_TAG_variable
+	.long	90                              @ DW_AT_type
+	.byte	1                               @ DW_AT_decl_file
+	.byte	8                               @ DW_AT_decl_line
+	.byte	5                               @ DW_AT_location
+	.byte	3
+	.long	.L.str.1
+	.byte	3                               @ Abbrev [3] 0x5a:0xc DW_TAG_array_type
+	.long	63                              @ DW_AT_type
+	.byte	4                               @ Abbrev [4] 0x5f:0x6 DW_TAG_subrange_type
+	.long	70                              @ DW_AT_type
+	.byte	8                               @ DW_AT_count
+	.byte	0                               @ End Of Children Mark
+	.byte	2                               @ Abbrev [2] 0x66:0xd DW_TAG_variable
+	.long	90                              @ DW_AT_type
+	.byte	1                               @ DW_AT_decl_file
+	.byte	12                              @ DW_AT_decl_line
+	.byte	5                               @ DW_AT_location
+	.byte	3
+	.long	.L.str.2
+	.byte	2                               @ Abbrev [2] 0x73:0xd DW_TAG_variable
+	.long	90                              @ DW_AT_type
+	.byte	1                               @ DW_AT_decl_file
+	.byte	16                              @ DW_AT_decl_line
+	.byte	5                               @ DW_AT_location
+	.byte	3
+	.long	.L.str.3
+	.byte	7                               @ Abbrev [7] 0x80:0x33 DW_TAG_subprogram
 	.long	.Lfunc_begin0                   @ DW_AT_low_pc
 	.long	.Lfunc_end0                     @ DW_AT_high_pc
 	.byte	1                               @ DW_AT_frame_base
@@ -215,13 +419,105 @@ pwned:
 	.byte	3                               @ DW_AT_decl_line
 	.byte	1                               @ DW_AT_prototyped
 	.byte	1                               @ DW_AT_external
-	.byte	8                               @ Abbrev [8] 0x61:0xa DW_TAG_TI_reserved_3
-	.long	.Ltmp0                          @ DW_AT_low_pc
+	.byte	8                               @ Abbrev [8] 0x94:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp1                          @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string5                  @ DW_AT_name
+	.byte	8                               @ Abbrev [8] 0x9e:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp2                          @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string5                  @ DW_AT_name
+	.byte	8                               @ Abbrev [8] 0xa8:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp3                          @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string5                  @ DW_AT_name
+	.byte	0                               @ End Of Children Mark
+	.byte	7                               @ Abbrev [7] 0xb3:0x33 DW_TAG_subprogram
+	.long	.Lfunc_begin1                   @ DW_AT_low_pc
+	.long	.Lfunc_end1                     @ DW_AT_high_pc
+	.byte	1                               @ DW_AT_frame_base
+	.byte	93
+	.byte	0                               @ DW_AT_TI_max_frame_size
+	.long	.Linfo_string7                  @ DW_AT_name
+	.byte	1                               @ DW_AT_decl_file
+	.byte	7                               @ DW_AT_decl_line
+	.byte	1                               @ DW_AT_prototyped
+	.byte	1                               @ DW_AT_external
+	.byte	8                               @ Abbrev [8] 0xc7:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp6                          @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string5                  @ DW_AT_name
+	.byte	8                               @ Abbrev [8] 0xd1:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp7                          @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string5                  @ DW_AT_name
+	.byte	8                               @ Abbrev [8] 0xdb:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp8                          @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string5                  @ DW_AT_name
+	.byte	0                               @ End Of Children Mark
+	.byte	7                               @ Abbrev [7] 0xe6:0x33 DW_TAG_subprogram
+	.long	.Lfunc_begin2                   @ DW_AT_low_pc
+	.long	.Lfunc_end2                     @ DW_AT_high_pc
+	.byte	1                               @ DW_AT_frame_base
+	.byte	93
+	.byte	0                               @ DW_AT_TI_max_frame_size
+	.long	.Linfo_string8                  @ DW_AT_name
+	.byte	1                               @ DW_AT_decl_file
+	.byte	11                              @ DW_AT_decl_line
+	.byte	1                               @ DW_AT_prototyped
+	.byte	1                               @ DW_AT_external
+	.byte	8                               @ Abbrev [8] 0xfa:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp11                         @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string5                  @ DW_AT_name
+	.byte	8                               @ Abbrev [8] 0x104:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp12                         @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string5                  @ DW_AT_name
+	.byte	8                               @ Abbrev [8] 0x10e:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp13                         @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string5                  @ DW_AT_name
+	.byte	0                               @ End Of Children Mark
+	.byte	7                               @ Abbrev [7] 0x119:0x33 DW_TAG_subprogram
+	.long	.Lfunc_begin3                   @ DW_AT_low_pc
+	.long	.Lfunc_end3                     @ DW_AT_high_pc
+	.byte	1                               @ DW_AT_frame_base
+	.byte	93
+	.byte	0                               @ DW_AT_TI_max_frame_size
+	.long	.Linfo_string9                  @ DW_AT_name
+	.byte	1                               @ DW_AT_decl_file
+	.byte	15                              @ DW_AT_decl_line
+	.byte	1                               @ DW_AT_prototyped
+	.byte	1                               @ DW_AT_external
+	.byte	8                               @ Abbrev [8] 0x12d:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp16                         @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string5                  @ DW_AT_name
+	.byte	8                               @ Abbrev [8] 0x137:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp17                         @ DW_AT_low_pc
+	.byte	1                               @ DW_AT_TI_reserved_9
+	.long	.Linfo_string5                  @ DW_AT_name
+	.byte	8                               @ Abbrev [8] 0x141:0xa DW_TAG_TI_reserved_3
+	.long	.Ltmp18                         @ DW_AT_low_pc
 	.byte	1                               @ DW_AT_TI_reserved_9
 	.long	.Linfo_string5                  @ DW_AT_name
 	.byte	0                               @ End Of Children Mark
 	.byte	0                               @ End Of Children Mark
 .Ldebug_info_end0:
+	.section	.debug_ranges,"",%progbits
+.Ldebug_ranges0:
+	.long	.Lfunc_begin0
+	.long	.Lfunc_end0
+	.long	.Lfunc_begin1
+	.long	.Lfunc_end1
+	.long	.Lfunc_begin2
+	.long	.Lfunc_end2
+	.long	.Lfunc_begin3
+	.long	.Lfunc_end3
+	.long	0
+	.long	0
 	.section	.debug_str,"MS",%progbits,1
 .Linfo_string0:
 	.asciz	"TI clang version 18.1.8 (ssh://git@bitbucket.itg.ti.com/code/llvm-project.git 41ce286cff6db007d382d297353d8bf884b450b7)" @ string offset=0
@@ -237,6 +533,12 @@ pwned:
 	.asciz	"_write"                        @ string offset=242
 .Linfo_string6:
 	.asciz	"pwned"                         @ string offset=249
+.Linfo_string7:
+	.asciz	"pwned2"                        @ string offset=255
+.Linfo_string8:
+	.asciz	"pwned3"                        @ string offset=262
+.Linfo_string9:
+	.asciz	"pwned4"                        @ string offset=269
 	.ident	"TI clang version 18.1.8 (ssh://git@bitbucket.itg.ti.com/code/llvm-project.git 41ce286cff6db007d382d297353d8bf884b450b7)"
 	.section	".note.GNU-stack","",%progbits
 	.addrsig
