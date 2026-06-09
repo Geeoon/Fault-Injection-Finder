@@ -7,6 +7,7 @@ import struct
 import time
 import pickle
 import threading
+import secrets
 
 from pyocd.core.helpers import ConnectHelper
 
@@ -158,25 +159,27 @@ class TargetDevice():
         time.sleep(.1)  # waiting for the results of the glitch
         real_output = self.ser.read_all()  # read the results
         self.logger.info(f"Got the following output {real_output}")
-        return (self.expected_output in real_output) or (b'pwned!' in real_output)
+        if real_output:
+            self.logger.critical(f"Got the following output {real_output}")
+        return (self.expected_output in real_output)# or (b'pwned!' in real_output)
     
     def close(self):
         """
         Close the serial connection
         """
-        self.logger.info("Closing serial connection")
+        self.logger.critical("Closing serial connection")
         self.ser.close()
 
 SESSION = ConnectHelper.session_with_chosen_probe(target_override="mspm0l2228")  # NOTE: change board here
 SESSION.open()
 OCD_TARGET = SESSION.board.target
 
-logging.getLogger("TargetDevice").setLevel(logging.INFO)
-logging.getLogger("FPGAParameters").setLevel(logging.INFO)
+logging.getLogger("TargetDevice").setLevel(logging.CRITICAL)
+logging.getLogger("FPGAParameters").setLevel(logging.CRITICAL)
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.CRITICAL
 )
 
 # get the expected output from file
@@ -214,21 +217,49 @@ target.set_setup_callback(setup_device)
 parameters.length = 5  # NOTE: this depends on your target's clock speed
 successes = []
 success_rate = []
+#l = len(options[1]['input'])
+#TRIALS = 500
+#tries = 0
+#successful_glitches = 0
+#try:
+#    for delay in range(735, 736):
+#        parameters.delay = delay
+#        parameters.set_length_delta(0)
+#        for i in range(-8, 1, 1):
+#            parameters.set_delay_delta(i)
+#            logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay")
+#            for _ in range(TRIALS):
+#                tries += 1
+#                if target.run(secrets.token_bytes(len(options[1]['input']))):
+#                # if target.run(options[1]['input']):
+#                    logging.critical(f"Successful fault with {parameters.get_delay()} delay")
+#                    successful_glitches += 1
+#                parameters.stop_background_listener()
+#except KeyboardInterrupt:
+#    logging.critical("Quitting")
+#finally:
+#    parameters.close()
+#    target.close()
+#    SESSION.close()
+#logging.critical(f"Success rate: {successful_glitches / tries}")
+#quit()
+
 try:
     for current_glitch in options:
         tries = 0
         successful_glitches = 0
         # give an extra 5 target cycles
-        for delay in range(max(current_glitch['cycles_after_trigger'][0] - 6, 1), current_glitch['cycles_after_trigger'][0] + 5):
+        for delay in range(max(current_glitch['cycles_after_trigger'][0] - 6, 1), current_glitch['cycles_after_trigger'][2] + 5):
             parameters.delay = delay
             for delay_delta in range(-6, 1):  # -6 to 0, going by 1
                 parameters.set_delay_delta(delay_delta)
-                for length in range(-2, 3):  # -2 to 2, going by 1
+                for length in range(0, 1):  # -2 to 2, going by 1
                     parameters.set_length_delta(length)
                     logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
                     for _ in range(TRIALS):
                         tries += 1
                         if target.run(current_glitch['input']):
+                        # if target.run(b'\xFF' * len(current_glitch['input'])):
                             logging.critical(f"Successful fault with {parameters.get_delay()} delay cycles with {parameters.get_length()} glitching length cycles")
                             successes.append({ "delay": parameters.get_delay(), "length": parameters.get_length() })
                             successful_glitches += 1
