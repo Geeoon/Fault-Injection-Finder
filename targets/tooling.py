@@ -181,23 +181,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     level=logging.CRITICAL
 )
-
-# get the expected output from file
-with open('./timspm0l2228/aes_ecb/expected.bin', 'rb') as f:  # NOTE: change the expected output here
-    expected = f.read()
-# get the glitch parameters
-with open('./timspm0l2228/aes_ecb/exported.pkl', 'rb') as f:  # TODO: change the exported faults found here
-    options = pickle.load(f)
-
-# only supports index = 0 (i.e, first after the trigger), so clear those where index != 0
-options = [option for option in options if option.get("index") == 0]
-
-target = TargetDevice(expected_output=expected, port='/dev/ttyACM0', baud=115200, timeout=1)
-parameters = FPGAParameters(port='/dev/ttyUSB0', baud=115200)
-
-# parameters.test()
-# quit()
-
 def setup_device(ser: serial.Serial, program_input: bytes):
     # NOTE: this is part of the tool that is very dependent on the target
     # This example for for targets that just reads at the beginning
@@ -212,11 +195,67 @@ def setup_device(ser: serial.Serial, program_input: bytes):
     parameters.start_background_listener()
     ser.write(program_input)
 
+
+target = TargetDevice(expected_output=b'', port='/dev/ttyACM0', baud=115200, timeout=1)
+parameters = FPGAParameters(port='/dev/ttyUSB0', baud=115200)
 target.set_setup_callback(setup_device)
 
 parameters.length = 5  # NOTE: this depends on your target's clock speed
-successes = []
-success_rate = []
+
+for folder_name in ['', '2', '3', '4', None]:
+    # get the expected output from file
+    if folder_name is None:
+        target.expected_output = b'pwned'  # catch any
+        # since None is last, we can just reuse options from the last loop
+    else:
+        with open(f'./timspm0l2228/aes_ecb/pwned{folder_name}/expected.bin', 'rb') as f:  # NOTE: change the expected output here
+            target.expected_output = f.read()
+        # get the glitch parameters
+        with open(f'./timspm0l2228/aes_ecb/pwned{folder_name}/exported.pkl', 'rb') as f:  # TODO: change the exported faults found here
+            options = pickle.load(f)
+        # only supports index = 0 (i.e, first after the trigger), so clear those where index != 0
+        options = [option for option in options if option.get("index") == 0]
+
+    successes = []
+    success_rate = []
+    try:
+        for current_glitch in options:
+            tries = 0
+            successful_glitches = 0
+            # give an extra 5 target cycles
+            for delay in range(max(current_glitch['cycles_after_trigger'][0] - 6, 1), current_glitch['cycles_after_trigger'][2] + 5):
+                parameters.delay = delay
+                for delay_delta in range(-6, 1):  # -6 to 0, going by 1
+                    parameters.set_delay_delta(delay_delta)
+                    for length in range(0, 1):  # -2 to 2, going by 1
+                        parameters.set_length_delta(length)
+                        logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
+                        for _ in range(TRIALS):
+                            tries += 1
+                            if target.run(current_glitch['input']):
+                            # if target.run(b'\xFF' * len(current_glitch['input'])):
+                                logging.critical(f"Successful fault with {parameters.get_delay()} delay cycles with {parameters.get_length()} glitching length cycles")
+                                successes.append({ "delay": parameters.get_delay(), "length": parameters.get_length() })
+                                successful_glitches += 1
+                            parameters.stop_background_listener()
+            success_rate.append(successful_glitches / tries)
+    except KeyboardInterrupt:
+        logging.critical("Ending tool.")
+    finally:
+        # Close the serial when done
+        parameters.close()
+        target.close()
+        SESSION.close()
+
+    logging.critical("Finished run, results:")
+    with open(f"out{folder_name}.txt", "w") as f:
+        for success in successes:
+            logging.critical(f"Delay: {success['delay']}\nLength: {success['length']}")
+            f.write(f"Delay: {success['delay']}\nLength: {success['length']}\n")
+        print(success_rate)
+        f.write(str(success_rate))
+
+"""
 #l = len(options[1]['input'])
 #TRIALS = 500
 #tries = 0
@@ -243,40 +282,4 @@ success_rate = []
 #    SESSION.close()
 #logging.critical(f"Success rate: {successful_glitches / tries}")
 #quit()
-
-try:
-    for current_glitch in options:
-        tries = 0
-        successful_glitches = 0
-        # give an extra 5 target cycles
-        for delay in range(max(current_glitch['cycles_after_trigger'][0] - 6, 1), current_glitch['cycles_after_trigger'][2] + 5):
-            parameters.delay = delay
-            for delay_delta in range(-6, 1):  # -6 to 0, going by 1
-                parameters.set_delay_delta(delay_delta)
-                for length in range(0, 1):  # -2 to 2, going by 1
-                    parameters.set_length_delta(length)
-                    logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
-                    for _ in range(TRIALS):
-                        tries += 1
-                        if target.run(current_glitch['input']):
-                        # if target.run(b'\xFF' * len(current_glitch['input'])):
-                            logging.critical(f"Successful fault with {parameters.get_delay()} delay cycles with {parameters.get_length()} glitching length cycles")
-                            successes.append({ "delay": parameters.get_delay(), "length": parameters.get_length() })
-                            successful_glitches += 1
-                        parameters.stop_background_listener()
-        success_rate.append(successful_glitches / tries)
-except KeyboardInterrupt:
-    logging.critical("Ending tool.")
-finally:
-    # Close the serial when done
-    parameters.close()
-    target.close()
-    SESSION.close()
-
-logging.critical("Finished run, results:")
-with open("out.txt", "w") as f:
-    for success in successes:
-        logging.critical(f"Delay: {success['delay']}\nLength: {success['length']}")
-        f.write(f"Delay: {success['delay']}\nLength: {success['length']}\n")
-    print(success_rate)
-    f.write(str(success_rate))
+"""
