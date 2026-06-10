@@ -11,7 +11,7 @@ import secrets
 
 from pyocd.core.helpers import ConnectHelper
 
-TRIALS = 10  # number of trials to do per glitch parameter
+TRIALS = 100  # number of trials to do per glitch parameter
 
 class FPGAParameters():
     def __init__(self, port: str, baud: int=115200, fpga_speed: int=200, target_speed: int=32, delay: int=0, length: int=5):
@@ -203,7 +203,8 @@ target.set_setup_callback(setup_device)
 parameters.length = 5  # NOTE: this depends on your target's clock speed
 
 try:
-    for folder_name in ['', '2', '3', '4', None]:
+    for folder_name in ['3',]:
+    # for folder_name in ['', '2', '3', '4', None]:
         # get the expected output from file
         if folder_name is None:
             target.expected_output = b'pwned'  # catch any
@@ -219,17 +220,18 @@ try:
 
         successes = []
         success_rate = []
-        for current_glitch in options:
+        for current_glitch in (options[1],):
             tries = 0
             successful_glitches = 0
             # give an extra 5 target cycles
-            for delay in range(max(current_glitch['cycles_after_trigger'][0] - 6, 1), current_glitch['cycles_after_trigger'][2] + 5):
+            # for delay in range(max(current_glitch['cycles_after_trigger'][0] - 6, 1), current_glitch['cycles_after_trigger'][2] + 5):
+            for delay in range(919, 920):
                 parameters.delay = delay
-                for delay_delta in range(-6, 1):  # -6 to 0, going by 1
+                for delay_delta in range(-8, 2):  # -6 to 0, going by 1
                     parameters.set_delay_delta(delay_delta)
                     for length in range(0, 1):  # -2 to 2, going by 1
                         parameters.set_length_delta(length)
-                        logging.info(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
+                        logging.critical(f"Trying {TRIALS} attempts with {parameters.get_delay()} delay and {parameters.get_length()} length")
                         for _ in range(TRIALS):
                             tries += 1
                             to_dev = secrets.token_bytes(len(current_glitch['input'])) if folder_name is None else current_glitch['input']
