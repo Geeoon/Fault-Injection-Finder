@@ -11,11 +11,17 @@
 #define UART_ADDR                       (UART_Regs*)UART0_BASE 
 #define BAUD_RATE                       115200
 
+<<<<<<< Updated upstream
 #define LED3_PORT   GPIOA
 #define LED3_PIN    DL_GPIO_PIN_0
 // #define LED3_PIN    LD_GPIO_PIN_10
 #define LED3_IOMUX  IOMUX_PINCM1   // PA0 = PINCM1 on MSPM0L2228
 // #define LED3_IOMUX  IOMUX_PINM25
+=======
+#define LEDS_PORT                       (GPIOB)
+#define LEDS_STATUS_LED_PIN             (DL_GPIO_PIN_14)
+#define LEDS_STATUS_LED_IOMUX           (IOMUX_PINCM35)
+>>>>>>> Stashed changes
 
 void init_device(void) {
     // UART configuration

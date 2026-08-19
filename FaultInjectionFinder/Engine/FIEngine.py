@@ -6,8 +6,6 @@ R = [getattr(arm_const, f"UC_ARM_REG_R{i}") for i in range(13)]
 PC = arm_const.UC_ARM_REG_PC
 LR = arm_const.UC_ARM_REG_LR
 SP = arm_const.UC_ARM_REG_SP
-NOP = b"\x00\xf0\x20\xe3"
-THUMB_NOP = b"\x00\xbf"  # ARMv6 Thumb
 
 DEFAULT_BINARY_ADDRESS = 0x1000000
 DEFAULT_BINARY_MAX_SIZE = 0x10000
@@ -46,7 +44,7 @@ class FIEngine():
                  RW_ADDRESS: int=DEFAULT_RW_ADDRESS,
                  FAULT_ADDRESS: int=DEFAULT_FAULT_ADDRESS,
                  TRIGGER_ADDRESS: int=DEFAULT_TRIGGER_ADDRESS,
-                 enable_thumb: bool=True,
+                 start_thumb: bool=True,
                  skip_addrs: list[int]=None,
                  addr_range: tuple[int, int]=None):
         """
@@ -59,18 +57,11 @@ class FIEngine():
         :param RW_ADDRESS: the IO address
         :param FAULT_ADDRESS: the address that should be written to in the event of a successful fault
         :param TRIGGER_ADDRESS: the address that should be written to to signify a trigger
-        :param enable_thumb: whether or not to run as ARMv6 Thumb
+        :param start_thumb: whether or not to start in thumb mode
         :param skip_addrs: a list of addresses to skip, if ran into at or after fault_index.  None to do skip at the exact address
         """
-        self.thumb = enable_thumb
-        if self.thumb:
-            self.nop = THUMB_NOP
-            self.md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)  # initialize capstone disassembler for ARMv6 Thumb
-            self.INSTRUCTION_SIZE = 2
-        else:
-            self.nop = NOP
-            self.md = Cs(CS_ARCH_ARM, CS_MODE_ARM)  # initialize capstone disassembler
-            self.INSTRUCTION_SIZE = 4
+        self.start_thumb = start_thumb
+        self.md = Cs(CS_ARCH_ARM, CS_MODE_THUMB if self.start_thumb else CS_MODE_ARM)  # initialize capstone, NOTE: thumb selection doesn't matter since we change it per instruction
         self.binary = binary
         self.input = input
         self._mutated_input = input
@@ -96,7 +87,7 @@ class FIEngine():
         self._invalid_fetch = None
         self._create_unicorn()
         self.mu.reg_write(SP, self.RAM_ADDRESS + self.RAM_SIZE)  # set the stack pointer to the top of our RAM
-        self.mu.reg_write(PC, (self.BINARY_ADDRESS | 1) if self.thumb else (self.BINARY_ADDRESS))  # reset PC to start of binary
+        self.mu.reg_write(PC, self.BINARY_ADDRESS | (1 if self.start_thumb else 0))  # reset PC to start of binary
         self.mu.reg_write(LR, 0x0)  # reset LR
         # reset all general purpose registers
         for reg in R:
@@ -116,10 +107,7 @@ class FIEngine():
 
     def _create_unicorn(self):
         # initalize emulator
-        if self.thumb:
-            self.mu = Uc(UC_ARCH_ARM, UC_MODE_THUMB | UC_MODE_MCLASS)  # ARMv6 Thumb
-        else:
-            self.mu = Uc(UC_ARCH_ARM, UC_MODE_ARM)
+        self.mu = Uc(UC_ARCH_ARM, UC_MODE_ARM)
         self.mu.mem_map(self.BINARY_ADDRESS, self.BINARY_MAX_SIZE, UC_PROT_READ | UC_PROT_EXEC)  # map the binary as read and execute only
         self.mu.mem_map(self.RAM_ADDRESS, self.RAM_SIZE, UC_PROT_READ | UC_PROT_WRITE)  # map RAM as read and write only  (maybe add execute for fun?)
         self.mu.mem_map(self.EXIT_ADDRESS, 0x1000, UC_PROT_WRITE)  # add exit hook to memory map
@@ -146,8 +134,11 @@ class FIEngine():
         return out
 
     def _instr_hook(self, mu, address, size, user_data):
+        # NOTE: address's last bit does not correspond to "thumb" bit
         self._instruction_count += 1
         decoded = None
+        is_thumb = mu.reg_read(arm_const.UC_ARM_REG_CPSR) & 0x20
+        self.md.mode = CS_MODE_THUMB if is_thumb else CS_MODE_ARM
         if self.triggers and not self._skip_cycle:
             # decoding is a slow operation, only do it if necessary
             decoded = list(self.md.disasm(mu.mem_read(address, size), address))
@@ -160,10 +151,10 @@ class FIEngine():
         # check _skip_cycle to prevent skipping multiple times
         if (self._skip_cycle is None) and (self._instruction_count >= self._skip_index) and ((self.addr_range is None) or ((address >= self.addr_range[0]) and (address <= self.addr_range[1]))):
             # we can now start skipping instructions, if they fit the criteria
-            if self.skip_addrs is None or (address & ~1) in self.skip_addrs:
+            if self.skip_addrs is None or address in self.skip_addrs:
                 # brute force or at the index we should skip
                 self._skip_cycle = self._instruction_count
-                self._skip_addr = address & ~1
+                self._skip_addr = address
                 if not decoded:
                     decoded = list(self.md.disasm(mu.mem_read(address, size), address))
                     if not decoded:
@@ -176,7 +167,7 @@ class FIEngine():
                     f"Skipping 0x{address:x}: {self._decoded[0].mnemonic} "
                     f"{self._decoded[0].op_str} at runtime cycle {self._skip_cycle}."
                 )
-                mu.reg_write(PC, (address + size) | (1 if self.thumb else 0))
+                mu.reg_write(PC, (address + size) | (1 if is_thumb else 0))
 
 
     def _exit_hook(self, mu, access, address, size, value, user_data) -> bool:
@@ -238,7 +229,7 @@ class FIEngine():
         self._init_emulator(fault_index)
         try:
             try:
-                self.mu.emu_start((self.BINARY_ADDRESS) | 1 if self.thumb else (self.BINARY_ADDRESS), 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
+                self.mu.emu_start((self.BINARY_ADDRESS) | (1 if self.start_thumb else 0), 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
             except UcError as e:
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     raise InvalidFetch
@@ -252,7 +243,7 @@ class FIEngine():
             self._mutated_input = self._flip_bits(self.input)
             self._pc_control = True
             try:
-                self.mu.emu_start((self.BINARY_ADDRESS | 1) if self.thumb else (self.BINARY_ADDRESS), 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
+                self.mu.emu_start(self.BINARY_ADDRESS | (1 if self.start_thumb else 0), 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
             except UcError as e:
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     pass

@@ -20,13 +20,11 @@ class PCSolver():
                  input_size: int,
                  desired_pc: int,
                  BINARY_ADDRESS: int=DEFAULT_BINARY_ADDRESS,
-                 BINARY_MAX_SIZE: int=DEFAULT_BINARY_MAX_SIZE,
                  RAM_ADDRESS: int=DEFAULT_RAM_ADDRESS,
                  RAM_SIZE: int=DEFAULT_RAM_SIZE,
                  EXIT_ADDRESS: int=DEFAULT_EXIT_ADDRESS,
                  RW_ADDRESS: int=DEFAULT_RW_ADDRESS,
-                 FAULT_ADDRESS: int=DEFAULT_FAULT_ADDRESS,
-                 enable_thumb: bool=True):
+                 start_thumb: bool=True):
         """
         :param binary: the binary to solve for
         :param input_size: the size of the input
@@ -40,9 +38,9 @@ class PCSolver():
         :param EXIT_ADDRESS: the address that should be written for an exit
         :param RW_ADDRESS: the IO address
         :param FAULT_ADDRESS: the address that should be written to in the event of a successful fault
-        :param enable_thumb: whether or not to run as ARMv6 Thumb
+        :param start_thumb: whether or not to start running in thumb mode (common in M architectures)
         """
-        self.thumb = enable_thumb
+        self.thumb = start_thumb
         self.desired_pc = desired_pc
         self.fault_index = fault_index
         arch = 'arm'
@@ -75,7 +73,6 @@ class PCSolver():
             'mem_read',
             when=angr.BP_BEFORE,
             mem_read_address=RW_ADDRESS,
-            # mem_read_length=1,
             action=self._io_read_hook
         )
         # set up exit hook

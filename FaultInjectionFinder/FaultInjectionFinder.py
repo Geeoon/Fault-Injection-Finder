@@ -12,7 +12,7 @@ class FaultInjectionFinder():
             expected_exit: int=None, 
             expected_regs: dict=None, 
             desired_pc: int=None, 
-            enable_thumb: bool=True, 
+            start_thumb: bool=True, 
             max_iter=20000, 
             user_sel: int = 1,
             binary_addr: int=DEFAULT_BINARY_ADDRESS,
@@ -26,7 +26,7 @@ class FaultInjectionFinder():
         :param expected_exit: the expected exit code of the program for a successful fault
         :param expected_regs: the expected registers of the program for a successful fault
         :param desired_pc: the program counter we should try to set, if we have control
-        :param enable_thumb: run the binary as thumb
+        :param start_thumb: run the binary as thumb
         :param user_sel: options that th euser can specify
         :param binary_addr: the address where the start of the binary should be flashed to
         :param addr_range: the range of instructions to be searched
@@ -42,7 +42,7 @@ class FaultInjectionFinder():
         self.expected_output = expected_output
         self.expected_exit = expected_exit
         self.expected_regs = expected_regs
-        self.thumb = enable_thumb
+        self.start_thumb = start_thumb
         self.desired_pc = desired_pc
         self.input = input
         self.max_iter = max_iter
@@ -67,7 +67,7 @@ class FaultInjectionFinder():
                 binary=self.binary,
                 user_sel=self.user_sel,
                 start_addr=self.binary_addr,
-                thumb=self.thumb
+                thumb=self.start_thumb
             ).instructions
             self.logger.info(f"Found {len(skip_targets)} vulnerable instructions to try.")
             if len(skip_targets) == 0:
@@ -77,7 +77,7 @@ class FaultInjectionFinder():
         self.engine = FIEngine(
             binary=self.binary,
             input=self.input,
-            enable_thumb=self.thumb,
+            start_thumb=self.start_thumb,
             BINARY_ADDRESS=self.binary_addr,
             skip_addrs=list(map(lambda target: target["address"] & ~1, skip_targets)) if skip_targets else None,
             addr_range=self.addr_range
@@ -110,7 +110,7 @@ class FaultInjectionFinder():
                         fault_cycle,
                         len(self.input),
                         self.desired_pc,
-                        enable_thumb=self.thumb,
+                        start_thumb=self.start_thumb,
                         BINARY_ADDRESS=self.binary_addr
                     )
                     good_input = solver.run(max_iter=self.max_iter)
@@ -136,7 +136,7 @@ class FaultInjectionFinder():
         :param index: the clock cycle of the fault
         :return: the output of the program, exit code, manual?
         """
-        self.engine = FIEngine(binary=self.binary, input=real_input, enable_thumb=self.thumb, BINARY_ADDRESS=self.binary_addr)
+        self.engine = FIEngine(binary=self.binary, input=real_input, start_thumb=self.start_thumb, BINARY_ADDRESS=self.binary_addr)
         self.logger.info("Simulating the fault...")
         skipped_instruction, skipped_addr, prog_input, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index, triggers = self.engine.run(index, max_iter=self.max_iter)        
         self.logger.info("Simulation finished")
