@@ -107,7 +107,8 @@ class FIEngine():
 
     def _create_unicorn(self):
         # initalize emulator
-        self.mu = Uc(UC_ARCH_ARM, UC_MODE_ARM)
+        self.mu = Uc(UC_ARCH_ARM, (UC_MODE_THUMB | UC_MODE_MCLASS) if self.start_thumb else UC_MODE_ARM)
+
         self.mu.mem_map(self.BINARY_ADDRESS, self.BINARY_MAX_SIZE, UC_PROT_READ | UC_PROT_EXEC)  # map the binary as read and execute only
         self.mu.mem_map(self.RAM_ADDRESS, self.RAM_SIZE, UC_PROT_READ | UC_PROT_WRITE)  # map RAM as read and write only  (maybe add execute for fun?)
         self.mu.mem_map(self.EXIT_ADDRESS, 0x1000, UC_PROT_WRITE)  # add exit hook to memory map
