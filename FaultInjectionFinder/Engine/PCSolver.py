@@ -30,7 +30,7 @@ class PCSolver():
         :param input_size: the size of the input
         :param fault_index: the "clock cycle" for the fault to occur on
         :param cycle_insn_map: the cycles to instruction called map
-        :param desired_pc: the program counter we want to solve for
+        :param desired_pc: the program counter we want to solve for, make sure to set the thumb bit if desired
         :param BINARY_ADDRESS: the address where the binary should be loaded
         :param BINARY_MAX_SIZE: the size of flash allocated for the binary
         :param RAM_ADDRESS: the starting address of the RAM
@@ -40,32 +40,29 @@ class PCSolver():
         :param FAULT_ADDRESS: the address that should be written to in the event of a successful fault
         :param start_thumb: whether or not to start running in thumb mode (common in M architectures)
         """
-        self.thumb = start_thumb
+        self.start_thumb = start_thumb
         self.desired_pc = desired_pc
         self.fault_index = fault_index
-        arch = 'arm'
-        if self.thumb:
-            self.desired_pc |= 1
-            arch = archinfo.ArchARMEL()
+        arch = archinfo.ArchARMEL()
         
         self.project = angr.load_shellcode(
             binary,
             arch=arch,
             start_offset=0,
             load_address=BINARY_ADDRESS,
-            thumb=self.thumb
+            # thumb=self.thumb  # let angr do it dynamically
         )
 
         self.state = self.project.factory.blank_state(
-            addr=(BINARY_ADDRESS | 1) if self.thumb else (BINARY_ADDRESS),
-            add_options={
+            addr=BINARY_ADDRESS | (1 if self.start_thumb else 0),
+            add_options={  # NOTE: in the future, we may want to just make it crash when it pulls unconstrained values to make it more deterministic
                 angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS,
                 angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,
             }
         )
         
         self.state.regs.sp = RAM_ADDRESS + RAM_SIZE
-        self.state.memory.store(RAM_ADDRESS, b'\x00' * RAM_SIZE)  # zero out RAM
+        self.state.memory.store(RAM_ADDRESS, b'\x00' * RAM_SIZE)  # zero out RAM, NOTE: also maybe crash to make it deterministic
         self.input_size = input_size
         # set up IO read hook
         self.RW_ADDRESS = RW_ADDRESS
@@ -155,13 +152,13 @@ class PCSolver():
                 # Check find condition
                 if state.globals['cycle_count'] == self.fault_index - 1:  # cycle_count stores the last executed cycle, so check against index - 1
                     old_ip = state.addr
-                    block = self.project.factory.block(state.addr, thumb=self.thumb)
+                    block = self.project.factory.block(state.addr)
                     if block.capstone.insns:
                         insn = block.capstone.insns[0]
                         self.logger.debug(f"Cycle to be skipped: {state.globals.get('cycle_count', 0)}, addr: {hex(insn.address)}, insn: {insn.mnemonic} {insn.op_str}")
-                    state.ip = state.addr + (2 if self.thumb else 4)
+                    state.ip = state.addr + (2 if (state.addr & 1) else 4)
                     self.logger.info(f"Skipping at cycle {state.globals['cycle_count'] + 1}.  Skipped from: {hex(old_ip & -2)} to: {hex(state.solver.eval(state.ip) & -2)}")
-                    block = self.project.factory.block(state.addr, thumb=self.thumb)
+                    block = self.project.factory.block(state.addr)
                     if block.capstone.insns:
                         insn = block.capstone.insns[0]
                         self.logger.debug(f"Cycle to run now {state.globals.get('cycle_count', 0)}, addr: {hex(insn.address)}, insn: {insn.mnemonic} {insn.op_str}")
