@@ -212,7 +212,7 @@ class FIEngine():
                 # we are able to influence the program counter
             else:
                 # has our input influenced the PC?
-                self._pc_control = self._invalid_fetch == address
+                self._pc_control = not (self._invalid_fetch == address)
             self.mu.emu_stop()
             return False
         elif access == UC_MEM_READ_UNMAPPED:

@@ -5,11 +5,17 @@ extern void pwned(void);
 
 int main(void) {
     volatile int dummy = 0;
-    if (dummy) pwned(); 
+    if (dummy) pwned();
+    asm("nop");
+    asm("nop");
+    asm("nop");
+    asm("nop");
+    asm("nop");
+
     uintptr_t addr;
     _read(0, (char*)&addr, sizeof(addr));
-    // flip all bits to test how the solver works
-    addr = ~addr;
+    // flip bits to test how the solver works
+    addr ^= 0xbabe;
     ((void (*)(void))addr)();
     return 0;
 }
