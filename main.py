@@ -59,6 +59,7 @@ parser.add_argument("-b", "--binary-addr", type=hex_or_dec, default=DEFAULT_BINA
 parser.add_argument("-u", "--output-dir", type=existing_dir, default=None, help="The directory to store faults that were found.")
 parser.add_argument("-f", "--begin-addr", type=hex_or_dec, default=None, help="The starting address of the instructions that should be considered for skipping.  (inclusive.)  If set, -g must also be set.")
 parser.add_argument("-g", "--end-addr", type=hex_or_dec, default=None, help="The ending address of the instructions that should be considered for skipping.  (inclusive.)  If set, -f must also be set.")
+parser.add_argument("-a", "--aggressive", action="store_true", default=False, help="Aggressively use angr for solving.  Try if you weren't able to find any faults.")
 args = parser.parse_args()
 
 if (args.begin_addr is None) != (args.end_addr is None):
@@ -99,7 +100,8 @@ finder = FaultInjectionFinder(binary_path=args.binary_path,
                               max_iter=args.max_iterations,
                               user_sel=args.types,
                               binary_addr=args.binary_addr,
-                              addr_range=(args.begin_addr, args.end_addr) if args.begin_addr and args.end_addr else None)
+                              addr_range=(args.begin_addr, args.end_addr) if args.begin_addr and args.end_addr else None,
+                              aggressive_hunt=args.aggressive)
 
 if args.simulate is not None:
     # only simulate

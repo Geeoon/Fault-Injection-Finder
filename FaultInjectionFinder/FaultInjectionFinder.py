@@ -16,7 +16,8 @@ class FaultInjectionFinder():
             max_iter=20000, 
             user_sel: int = 1,
             binary_addr: int=DEFAULT_BINARY_ADDRESS,
-            addr_range: tuple[int, int]=None
+            addr_range: tuple[int, int]=None,
+            aggressive_hunt: bool=False
         ):
         """
         Initializer for the FaultInjetionFinder
@@ -30,6 +31,7 @@ class FaultInjectionFinder():
         :param user_sel: options that th euser can specify
         :param binary_addr: the address where the start of the binary should be flashed to
         :param addr_range: the range of instructions to be searched
+        :param aggressive_hunt: whether or not to aggressively use angr.  try enabling if you weren't able to find any faults
         If any of the expected value match, it is considered a success.  For expected_regs, only give the registers that are expected.
         Example:
         {
@@ -49,6 +51,7 @@ class FaultInjectionFinder():
         self.user_sel = user_sel
         self.binary_addr = binary_addr
         self.addr_range = addr_range
+        self.aggressive_hunt = aggressive_hunt
         self.logger = logging.getLogger(__name__)
 
         try:
@@ -80,7 +83,8 @@ class FaultInjectionFinder():
             start_thumb=self.start_thumb,
             BINARY_ADDRESS=self.binary_addr,
             skip_addrs=list(map(lambda target: target["address"] & ~1, skip_targets)) if skip_targets else None,
-            addr_range=self.addr_range
+            addr_range=self.addr_range,
+            aggressive_hunt=self.aggressive_hunt
         )
         self.logger.info("Searching for faults...")
         successes = []

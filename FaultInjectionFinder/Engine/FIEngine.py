@@ -31,7 +31,6 @@ class FaultDetected(Exception):
 class FIEngine():
     """
     The main driver for running binaries with faults.
-    Only supports ARM64 (AArch64) binaries.
     """
     def __init__(self,
                  binary: bytes,
@@ -46,7 +45,9 @@ class FIEngine():
                  TRIGGER_ADDRESS: int=DEFAULT_TRIGGER_ADDRESS,
                  start_thumb: bool=True,
                  skip_addrs: list[int]=None,
-                 addr_range: tuple[int, int]=None):
+                 addr_range: tuple[int, int]=None,
+                 aggressive_hunt: bool=False
+                 ):
         """
         :param binary: the binary to examine
         :param BINARY_ADDRESS: the address where the binary should be loaded
@@ -59,6 +60,7 @@ class FIEngine():
         :param TRIGGER_ADDRESS: the address that should be written to to signify a trigger
         :param start_thumb: whether or not to start in thumb mode
         :param skip_addrs: a list of addresses to skip, if ran into at or after fault_index.  None to do skip at the exact address
+        :param aggressive_hunt: aggressively use angr, even in situations where PC control is not seen
         """
         self.start_thumb = start_thumb
         self.md = Cs(CS_ARCH_ARM, CS_MODE_THUMB if self.start_thumb else CS_MODE_ARM)  # initialize capstone, NOTE: thumb selection doesn't matter since we change it per instruction
@@ -77,6 +79,7 @@ class FIEngine():
         self.logger = logging.getLogger(__name__)
         self.skip_addrs = skip_addrs
         self.addr_range = addr_range
+        self.aggressive_hunt = aggressive_hunt
 
     def _init_emulator(self, index):
         # reset emulator
@@ -212,7 +215,7 @@ class FIEngine():
                 # we are able to influence the program counter
             else:
                 # has our input influenced the PC?
-                self._pc_control = not (self._invalid_fetch == address)
+                self._pc_control = self.aggressive_hunt or not (self._invalid_fetch == address)
             self.mu.emu_stop()
             return False
         elif access == UC_MEM_READ_UNMAPPED:
