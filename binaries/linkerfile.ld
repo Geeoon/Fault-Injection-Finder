@@ -2,7 +2,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    FLASH (RX)  : ORIGIN = 0x1000000, LENGTH = 0x10000      /* 64 KiB */
+    FLASH (RX)  : ORIGIN = 0x1000000, LENGTH = 0x100000      /* 1024 KiB */
     RAM (RWX)   : ORIGIN = 0x2000000, LENGTH = 0x10000      /* 64 KiB */
 }
 

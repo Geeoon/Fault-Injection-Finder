@@ -8,7 +8,7 @@ LR = arm_const.UC_ARM_REG_LR
 SP = arm_const.UC_ARM_REG_SP
 
 DEFAULT_BINARY_ADDRESS = 0x1000000
-DEFAULT_BINARY_MAX_SIZE = 0x10000
+DEFAULT_BINARY_MAX_SIZE = 0x100000
 DEFAULT_RAM_ADDRESS = 0x2000000
 DEFAULT_RAM_SIZE = 0x10000
 DEFAULT_EXIT_ADDRESS = 0x3000000
@@ -182,6 +182,7 @@ class FIEngine():
         return True
 
     def _rw_hook(self, mu, access, address, size, value, user_data) -> bool:
+        value &= 0xFF  # only look at first byte
         if access == UC_MEM_WRITE:
             self.logger.debug(f"IO write: {value.to_bytes(1)}")
             self.output += value.to_bytes(1)
@@ -229,12 +230,14 @@ class FIEngine():
         :param fault_index: the instruction to fault (0 being the first instruction in the binary)
         :param max_iter: the max number of iterations to run the program for.  Set to 0 to run until exit
         """
+        crashed = False
         self.logger.info("Starting the emulation")
         self._init_emulator(fault_index)
         try:
             try:
                 self.mu.emu_start((self.BINARY_ADDRESS) | (1 if self.start_thumb else 0), 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
             except UcError as e:
+                crashed = True
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     raise InvalidFetch
                 self.logger.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")
@@ -251,14 +254,14 @@ class FIEngine():
             except UcError as e:
                 if e.errno == UC_ERR_FETCH_UNMAPPED:
                     pass
-                self.logger.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")                
+                self.logger.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")   
         # if we exit without hittinig the glitch index, then there is no more to do
         self.is_done = (self._skip_cycle is None) or (self._skip_index > self._instruction_count)
         if self.is_done:
             self.logger.info("Ran without encountering an instruction to fault, this indicates the end of the search.")
             return None
-        if self.exit_code is None:
-            self.logger.debug("Program did not exit (emulation stopped before program exit).")
+        if self.exit_code is None and not crashed:
+            self.logger.info("Program did not exit (emulation stopped before program exit).  Program may have gotten stuck in a loop.")
         if not self._decoded:
             self.logger.warning("Could not decode instruction, not attempting to find faults")
             return None
