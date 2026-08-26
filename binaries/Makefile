@@ -29,12 +29,13 @@ CFLAGS += -DWOLFSSL_USER_SETTINGS
 
 .PRECIOUS: %.s %.elf
 
-all: infinite_loop.bin password.bin exit.bin hello_world.bin echo.bin pc_test.bin sha256.bin aes_ecb.bin pc_test_complex.bin constraints.bin md5.bin chacha20.bin wolfssl_blake2b.bin wolfssl_ed25519.bin
+all: infinite_loop.bin password.bin exit.bin hello_world.bin echo.bin pc_test.bin sha256.bin aes_ecb.bin pc_test_complex.bin constraints.bin md5.bin chacha20.bin wolfssl_blake2b.bin wolfssl_ed25519.bin wolfssl_aes_ecb.bin
 
 # --- wolfSSL library build ---
 # Add source files here as you enable more wolfssl features
 WOLFSSL_SRCS := \
 	$(WOLFSSL_DIR)/wolfcrypt/src/blake2b.c \
+	$(WOLFSSL_DIR)/wolfcrypt/src/aes.c \
 	$(WOLFSSL_DIR)/wolfcrypt/src/ed25519.c \
 	$(WOLFSSL_DIR)/wolfcrypt/src/sha512.c \
 	$(WOLFSSL_DIR)/wolfcrypt/src/ge_operations.c \
@@ -68,7 +69,7 @@ extra_objs = $(patsubst %.c,%.o,\
 				$(filter-out source/$(1)/main.c,\
 					$(wildcard source/$(1)/*.c)))
 
-TARGETS := infinite_loop password exit hello_world echo pc_test sha256 aes_ecb pc_test_complex constraints md5 chacha20 wolfssl_blake2b wolfssl_ed25519
+TARGETS := infinite_loop password exit hello_world echo pc_test sha256 aes_ecb pc_test_complex constraints md5 chacha20 wolfssl_blake2b wolfssl_ed25519 wolfssl_aes_ecb
 
 define TARGET_RULES
 $(1).elf: $(1).s stubs.s startup.s pwned.s $(call extra_objs,$(1)) libwolfssl.a

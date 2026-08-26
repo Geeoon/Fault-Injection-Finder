@@ -32,5 +32,6 @@
 #define WOLFSSL_SHA512
 #define HAVE_ECC
 #define HAVE_ED25519
+#define HAVE_AES_ECB
 
 #endif /* USER_SETTINGS_H */

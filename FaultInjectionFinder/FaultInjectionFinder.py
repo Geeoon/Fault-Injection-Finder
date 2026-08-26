@@ -90,48 +90,51 @@ class FaultInjectionFinder():
         successes = []
 
         index = 0
-        while not self.engine.is_done and index < self.max_iter:  # set hard limit in-case it goes forever
-            res = self.engine.run(fault_index=index, max_iter=self.max_iter)
-            if not res:
-                break  # continue?
-            skipped_instruction, skipped_addr, prog_input, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index, triggers = res
-            index = next_index
+        try:
+            while not self.engine.is_done and index < self.max_iter:  # set hard limit in-case it goes forever
+                res = self.engine.run(fault_index=index, max_iter=self.max_iter)
+                if not res:
+                    break  # continue?
+                skipped_instruction, skipped_addr, prog_input, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index, triggers = res
+                index = next_index
 
-            # check if we got any actual results
-            nothing_set = self.expected_exit is None and self.expected_output is None
-            conditions_pass = (
-                (self.expected_exit is None or self.expected_exit == res_exit) and
-                (self.expected_output is None or self.expected_output in res_output)
-            )
+                # check if we got any actual results
+                nothing_set = self.expected_exit is None and self.expected_output is None
+                conditions_pass = (
+                    (self.expected_exit is None or self.expected_exit == res_exit) and
+                    (self.expected_output is None or self.expected_output in res_output)
+                )
 
-            if (nothing_set or not conditions_pass) and not pc_control and not manual:
-                continue
-            good_input = None
-            if pc_control:
-                if self.desired_pc is not None:
-                    solver = PCSolver(
-                        self.engine.binary,
-                        fault_cycle,
-                        len(self.input),
-                        self.desired_pc,
-                        start_thumb=self.start_thumb,
-                        BINARY_ADDRESS=self.binary_addr
-                    )
-                    good_input = solver.run(max_iter=self.max_iter)
-            successes.append((
-                skipped_addr,
-                fault_cycle,
-                skipped_instruction,
-                prog_input,
-                res_output,
-                res_exit,
-                res_regs,
-                pc_control,
-                manual,
-                good_input,
-                triggers
-            ))
-        self.logger.info("Done searching for faults.")
+                if (nothing_set or not conditions_pass) and not pc_control and not manual:
+                    continue
+                good_input = None
+                if pc_control:
+                    if self.desired_pc is not None:
+                        solver = PCSolver(
+                            self.engine.binary,
+                            fault_cycle,
+                            len(self.input),
+                            self.desired_pc,
+                            start_thumb=self.start_thumb,
+                            BINARY_ADDRESS=self.binary_addr
+                        )
+                        good_input = solver.run(max_iter=self.max_iter)
+                successes.append((
+                    skipped_addr,
+                    fault_cycle,
+                    skipped_instruction,
+                    prog_input,
+                    res_output,
+                    res_exit,
+                    res_regs,
+                    pc_control,
+                    manual,
+                    good_input,
+                    triggers
+                ))
+            self.logger.info("Done searching for faults.")
+        except BaseException as e:
+            self.logger.critical(f"Ended early: {str(e)}")
         return successes
 
     def simulate_fault(self, real_input: bytes, index: int) -> tuple[bytes, int, bool]:
