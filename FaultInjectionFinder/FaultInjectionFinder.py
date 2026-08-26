@@ -95,8 +95,8 @@ class FaultInjectionFinder():
                 res = self.engine.run(fault_index=index, max_iter=self.max_iter)
                 if not res:
                     break  # continue?
-                skipped_instruction, skipped_addr, prog_input, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index, triggers = res
-                index = next_index
+                skipped_instruction, skipped_addr, prog_input, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, total_cycles_ran, triggers = res
+                index = fault_cycle + 1
 
                 # check if we got any actual results
                 nothing_set = self.expected_exit is None and self.expected_output is None
@@ -140,11 +140,11 @@ class FaultInjectionFinder():
     def simulate_fault(self, real_input: bytes, index: int) -> tuple[bytes, int, bool]:
         """
         :param real_input: the input to actually give the program
-        :param index: the clock cycle of the fault
+        :param index: the clock cycle of the fault, None for no skipping
         :return: the output of the program, exit code, manual?
         """
-        self.engine = FIEngine(binary=self.binary, input=real_input, start_thumb=self.start_thumb, BINARY_ADDRESS=self.binary_addr)
+        self.engine = FIEngine(binary=self.binary, input=real_input, start_thumb=self.start_thumb, BINARY_ADDRESS=self.binary_addr, )
         self.logger.info("Simulating the fault...")
-        skipped_instruction, skipped_addr, prog_input, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, next_index, triggers = self.engine.run(index, max_iter=self.max_iter)        
+        skipped_instruction, skipped_addr, prog_input, res_output, res_exit, res_regs, pc_control, manual, fault_cycle, total_cycles_ran, triggers = self.engine.simulate(index, max_iter=self.max_iter)        
         self.logger.info("Simulation finished")
         return prog_input, res_output, res_exit, manual

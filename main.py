@@ -105,7 +105,7 @@ finder = FaultInjectionFinder(binary_path=args.binary_path,
 
 if args.simulate is not None:
     # only simulate
-    prog_input, out, exit, manual = finder.simulate_fault(bin_in, index=args.simulate)
+    prog_input, out, exit, manual = finder.simulate_fault(bin_in, index=args.simulate if args.simulate > 0 else None)
 
     print("\nExit Code:")
     print(f"  {exit}")

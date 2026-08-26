@@ -88,6 +88,7 @@ class FIEngine():
         self.exit_code = None
         self._mutated_input = self.input
         self._invalid_fetch = None
+        self._skip_index = index
         self._create_unicorn()
         self.mu.reg_write(SP, self.RAM_ADDRESS + self.RAM_SIZE)  # set the stack pointer to the top of our RAM
         self.mu.reg_write(PC, self.BINARY_ADDRESS | (1 if self.start_thumb else 0))  # reset PC to start of binary
@@ -95,7 +96,6 @@ class FIEngine():
         # reset all general purpose registers
         for reg in R:
             self.mu.reg_write(reg, 0x0)
-        self._skip_index = index
         self._skip_cycle = None           # runtime cycle when address was hit
         self._instruction_count = 0
         self.manual = False
@@ -140,6 +140,8 @@ class FIEngine():
     def _instr_hook(self, mu, address, size, user_data):
         # NOTE: address's last bit does not correspond to "thumb" bit
         self._instruction_count += 1
+        if self._skip_index is None:
+            return True
         decoded = None
         is_thumb = mu.reg_read(arm_const.UC_ARM_REG_CPSR) & 0x20
         self.md.mode = CS_MODE_THUMB if is_thumb else CS_MODE_ARM
@@ -227,7 +229,7 @@ class FIEngine():
     def run(self, fault_index: int=None, max_iter: int=100) -> tuple:
         """
         Runs the binary with an optional fault index
-        :param fault_index: the instruction to fault (0 being the first instruction in the binary)
+        :param fault_index: the instruction to fault (1 being the first instruction in the binary)
         :param max_iter: the max number of iterations to run the program for.  Set to 0 to run until exit
         """
         crashed = False
@@ -263,7 +265,7 @@ class FIEngine():
         if self.exit_code is None and not crashed:
             self.logger.info("Program did not exit (emulation stopped before program exit).  Program may have gotten stuck in a loop.")
         if not self._decoded:
-            self.logger.warning("Could not decode instruction, not attempting to find faults")
+            self.logger.critical("Could not decode instruction, not attempting to find faults")
             return None
         
         # get registers
@@ -271,6 +273,7 @@ class FIEngine():
         for i in range(len(R)):
             final_registers[f'R{i}'] = self.mu.reg_read(R[i])
         final_registers['PC'] = self.mu.reg_read(PC)
+        self.logger.info(f"Stopped after {self._instruction_count} instructions")
         return (
             self._decoded,
             self._skip_addr,
@@ -281,10 +284,52 @@ class FIEngine():
             self._pc_control,
             self.manual,
             self._skip_cycle,
-            (self._skip_cycle + 1) if self._skip_cycle else None,
+            self._instruction_count,
             self.triggers
         )
         # print registers
         # self.logger.info("Emulation done. Below is the CPU context")
         # for i in range(4): self.logger.info(f">>> R{i} = 0x{self.mu.reg_read(R[i]):x}")
         
+    def simulate(self, fault_index: int=None, max_iter: int=1000000) -> tuple:
+        """
+        Runs the binary with an optional fault index
+        :param fault_index: the instruction to fault (0 being the first instruction in the binary)
+        :param max_iter: the max number of iterations to run the program for.  Set to 0 to run until exit
+        """
+        crashed = False
+        self.logger.info("Starting the emulation")
+        self._init_emulator(fault_index)
+        try:
+            self.mu.emu_start((self.BINARY_ADDRESS) | (1 if self.start_thumb else 0), 0xFFFFFFFF, count=max_iter) # `until` set to non existant address to run until exit or max_iter
+        except UcError as e:
+            crashed = True
+            if e.errno == UC_ERR_FETCH_UNMAPPED:
+                self.logger.info("An invalid fetch occured")
+            else:
+                self.logger.debug(f"Emulator crashed (likely just due an invalid CPU state): {str(e)}")
+        if self.exit_code is None and not crashed:
+            self.logger.info("Program did not exit (emulation stopped before program exit).  Program may have gotten stuck in a loop.")
+        # get registers
+        final_registers = {}
+        for i in range(len(R)):
+            final_registers[f'R{i}'] = self.mu.reg_read(R[i])
+        final_registers['PC'] = self.mu.reg_read(PC)
+        self.logger.info(f"Stopped after {self._instruction_count} instructions")
+
+        return (
+            None,
+            None,
+            self._input,
+            self.output,
+            self.exit_code,
+            final_registers,
+            None,
+            self.manual,
+            None,
+            self._instruction_count,
+            self.triggers
+        )
+        # print registers
+        # self.logger.info("Emulation done. Below is the CPU context")
+        # for i in range(4): self.logger.info(f">>> R{i} = 0x{self.mu.reg_read(R[i]):x}")
