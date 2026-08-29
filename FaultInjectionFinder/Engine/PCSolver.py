@@ -58,6 +58,7 @@ class PCSolver():
             add_options={  # NOTE: in the future, we may want to just make it crash when it pulls unconstrained values to make it more deterministic
                 angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS,
                 angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,
+                angr.options.LAZY_SOLVES,
             }
         )
         
@@ -120,6 +121,18 @@ class PCSolver():
         else:
             return state.solver.eval(ip) == self.desired_pc
 
+    def _find_solution(self, state):
+        # we chose to implement this in a kind of convoluted way.  Instead of having the constraint added to the simgr, we apply it once the 
+        # IP is symbolic.  This way, in the future, we can save these states and solve for different PC values
+        if state.ip.symbolic:
+            state.add_constraints(state.ip == self.desired_pc)
+        if state.solver.satisfiable():
+            result = []
+            for sym_byte in state.globals.get('symbolic_inputs', []):
+                result.append(state.solver.eval(sym_byte))
+            return bytes(result)
+        return None
+
     def run(self, max_iter: int=2000) -> bytes | None:
         """
         Run the solver.
@@ -127,20 +140,22 @@ class PCSolver():
         simgr = self.project.factory.simgr(
             self.state,
             save_unconstrained=True,
-            save_unsat=True,
+            save_unsat=False,
             stashes={
                 'active': [],
                 'deadended': [],
                 'unsat': [],
                 'unconstrained': [],
                 'found': [],
-            }
+            },
+            
         )
         # veritesting, does not work with our setup due to internal angr weirdness
         # simgr.use_technique(angr.exploration_techniques.veritesting.Veritesting())
         # simple max iterations
         simgr.use_technique(angr.exploration_techniques.LengthLimiter(max_length=max_iter))
         simgr.use_technique(angr.exploration_techniques.LoopSeer(bound=32))
+        # simgr.use_technique(angr.exploration_techniques.DFS())
         self._steps = 0
         while simgr.active:
             simgr.step(num_inst=1)
@@ -163,22 +178,17 @@ class PCSolver():
                         insn = block.capstone.insns[0]
                         self.logger.debug(f"Cycle to run now {state.globals.get('cycle_count', 0)}, addr: {hex(insn.address)}, insn: {insn.mnemonic} {insn.op_str}")
 
+
+            simgr.unsat.clear()  # save memory
             simgr.move(from_stash='active', to_stash='found', filter_func=self._pc_is_target)
+            simgr.move(from_stash='unconstrained', to_stash='found', filter_func=self._pc_is_target)
+            simgr.unconstrained.clear()  # save memory
+            simgr.move(from_stash='deadended', to_stash='found', filter_func=self._pc_is_target)
+            simgr.deadended.clear()  # save memory
             if simgr.found:
                 break
-                
-        if simgr.found:
-            candidates = simgr.found
-        elif simgr.unconstrained:
-            candidates = simgr.unconstrained
-        else:
-            return None
-        for state in candidates:
-            if state.ip.symbolic:
-                state.add_constraints(state.ip == self.desired_pc)
-            if state.solver.satisfiable():
-                result = []
-                for sym_byte in state.globals.get('symbolic_inputs', []):
-                    result.append(state.solver.eval(sym_byte))
-                return bytes(result)
+        for state in simgr.found:  # for each found state, try to find a solution
+            soln = self._find_solution(state)
+            if soln is not None:
+                return soln
         return None
