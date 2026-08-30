@@ -22,7 +22,7 @@ CFLAGS += -ffreestanding
 
 .PRECIOUS: %.s %.elf
 
-all: hello.bin echo.bin
+all: hello.bin echo.bin password.bin
 
 stubs.s: stubs/src/lib.rs
 	$(CARGO) clean -p stubs --target $(RUST_TARGET) --release
@@ -44,7 +44,7 @@ extra_objs = $(patsubst %.c,%.o,\
 				$(filter-out source/$(1)/main.c,\
 					$(wildcard source/$(1)/*.c)))
 
-TARGETS := hello echo
+TARGETS := hello echo password
 
 define TARGET_RULES
 $(1).elf: $(1).s stubs.s startup.s pwned.s $(call extra_objs,$(1))

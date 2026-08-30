@@ -17,6 +17,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "password"
+version = "0.0.0"
+dependencies = [
+ "stubs",
+]
+
+[[package]]
 name = "shellcode"
 version = "0.1.0"
 dependencies = [
