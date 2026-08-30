@@ -3,6 +3,13 @@
 version = 4
 
 [[package]]
+name = "echo"
+version = "0.0.0"
+dependencies = [
+ "stubs",
+]
+
+[[package]]
 name = "hello"
 version = "0.0.0"
 dependencies = [

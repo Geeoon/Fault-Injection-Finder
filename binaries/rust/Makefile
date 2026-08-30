@@ -22,15 +22,18 @@ CFLAGS += -ffreestanding
 
 .PRECIOUS: %.s %.elf
 
-all: hello.bin
+all: hello.bin echo.bin
 
 stubs.s: stubs/src/lib.rs
+	$(CARGO) clean -p stubs --target $(RUST_TARGET) --release
 	$(CARGO) rustc -p stubs --target $(RUST_TARGET) --release -- --emit=asm=$(CURDIR)/$@
 
 pwned.s: shellcode/src/lib.rs
+	$(CARGO) clean -p shellcode --target $(RUST_TARGET) --release
 	$(CARGO) rustc -p shellcode --target $(RUST_TARGET) --release -- --emit=asm=$(CURDIR)/$@
 
 %.s: source/%/src/main.rs stubs.s
+	$(CARGO) clean -p $* --target $(RUST_TARGET) --release
 	$(CARGO) rustc -p $* --target $(RUST_TARGET) --release -- --emit=asm=$(CURDIR)/$@
 
 # Compile extra (non-main) .c files in a target's directory to .o
@@ -41,7 +44,7 @@ extra_objs = $(patsubst %.c,%.o,\
 				$(filter-out source/$(1)/main.c,\
 					$(wildcard source/$(1)/*.c)))
 
-TARGETS := hello
+TARGETS := hello echo
 
 define TARGET_RULES
 $(1).elf: $(1).s stubs.s startup.s pwned.s $(call extra_objs,$(1))

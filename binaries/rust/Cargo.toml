@@ -1,5 +1,5 @@
 [workspace]
-members = ["stubs", "shellcode", "source/hello"]
+members = ["stubs", "shellcode", "source/*"]
 resolver = "2"
 
 [profile.release]
