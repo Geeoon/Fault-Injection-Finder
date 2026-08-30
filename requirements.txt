@@ -12,7 +12,7 @@ cle==9.2.211
 cxxheaderparser==1.7.0
 future==1.0.0
 gitdb==4.0.12
-GitPython==3.1.46
+GitPython==3.1.58
 lmdb==2.1.1
 markdown-it-py==4.0.0
 mdurl==0.1.2
@@ -39,6 +39,6 @@ sortedcontainers==2.4.0
 sympy==1.14.0
 tibs==0.5.7
 typing_extensions==4.15.0
-uefi_firmware==1.16
+uefi_firmware==1.11
 unicorn==2.1.4
 z3-solver==4.13.0.0
