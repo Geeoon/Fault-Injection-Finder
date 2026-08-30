@@ -39,6 +39,6 @@ sortedcontainers==2.4.0
 sympy==1.14.0
 tibs==0.5.7
 typing_extensions==4.15.0
-uefi_firmware==1.11
+uefi_firmware==1.16
 unicorn==2.1.4
 z3-solver==4.13.0.0
