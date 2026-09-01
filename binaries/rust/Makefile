@@ -2,7 +2,6 @@ CC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
 AR=arm-none-eabi-ar
 CARGO=cargo
-RUST_TARGET=thumbv6m-none-eabi
 
 ifdef ARCH
 	CFLAGS += -march=$(ARCH)
@@ -11,6 +10,12 @@ else
 endif
 ifneq ($(NO_THUMB),1)
 	CFLAGS += -mthumb
+endif
+
+ifdef TARGET
+	RUST_TARGET=$(TARGET)
+else
+	RUST_TARGET=thumbv6m-none-eabi
 endif
 CFLAGS += -O2
 CFLAGS += -ffunction-sections
@@ -22,7 +27,8 @@ CFLAGS += -ffreestanding
 
 .PRECIOUS: %.s %.elf
 
-all: hello.bin echo.bin password.bin
+all: hello.bin echo.bin password.bin rustcrypto_aes_ecb_decrypt.bin
+STATICLIB_TARGETS := rustcrypto_aes_ecb_decrypt
 
 stubs.s: stubs/src/lib.rs
 	$(CARGO) clean -p stubs --target $(RUST_TARGET) --release
@@ -35,6 +41,16 @@ pwned.s: shellcode/src/lib.rs
 %.s: source/%/src/main.rs stubs.s
 	$(CARGO) clean -p $* --target $(RUST_TARGET) --release
 	$(CARGO) rustc -p $* --target $(RUST_TARGET) --release -- --emit=asm=$(CURDIR)/$@
+
+# External libraries have to compiled statically
+librustcrypto_aes_ecb_decrypt.a: source/rustcrypto_aes_ecb_decrypt/src/lib.rs
+	$(CARGO) clean -p rustcrypto_aes_ecb_decrypt --target $(RUST_TARGET) --release
+	$(CARGO) build -p rustcrypto_aes_ecb_decrypt --target $(RUST_TARGET) --release
+	cp target/$(RUST_TARGET)/release/librustcrypto_aes_ecb_decrypt.a $@
+
+rustcrypto_aes_ecb_decrypt.elf: librustcrypto_aes_ecb_decrypt.a startup.s pwned.s
+	$(CC) $(CFLAGS) startup.s pwned.s $< $(LDFLAGS) -o $@
+
 
 # Compile extra (non-main) .c files in a target's directory to .o
 source/%/%.o: source/%/%.c
@@ -62,3 +78,11 @@ clean:
 	      $(addsuffix .s,$(TARGETS)) \
 	      stubs.s pwned.s \
 	      $(foreach t,$(TARGETS),$(wildcard source/$(t)/*.o))
+
+clean:
+	rm -f $(addsuffix .bin,$(TARGETS) $(STATICLIB_TARGETS)) \
+	      $(addsuffix .elf,$(TARGETS) $(STATICLIB_TARGETS)) \
+	      $(addsuffix .s,$(TARGETS) $(STATICLIB_TARGETS)) \
+	      $(addprefix lib,$(addsuffix .a,$(STATICLIB_TARGETS))) \
+	      stubs.s pwned.s \
+	      $(foreach t,$(TARGETS) $(STATICLIB_TARGETS),$(wildcard source/$(t)/*.o))

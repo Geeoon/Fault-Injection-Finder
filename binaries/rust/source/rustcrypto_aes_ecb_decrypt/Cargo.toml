@@ -1,0 +1,11 @@
+[package]
+name = "rustcrypto_aes_ecb_decrypt"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+stubs = { path = "../../stubs" }
+aes = { version = "0.8", default-features = false }
+ecb = { version = "0.1", default-features = false }
