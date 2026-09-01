@@ -17,9 +17,9 @@ pub extern "C" fn main() -> u32 {
 
     stubs::_read(&mut input);
     let mut cipher = Aes128EcbDec::new(key.into());
-    let in_block = GenericArray::from(input);
-    let mut out_block = GenericArray::from(output);
-    cipher.decrypt_block_b2b_mut(&in_block, &mut out_block);
+    let input = GenericArray::from(input);
+    let mut output = GenericArray::from(output);
+    cipher.decrypt_block_b2b_mut(&input, &mut output);
     0
 }
 
