@@ -24,8 +24,7 @@ class PCSolver():
                  RAM_SIZE: int=DEFAULT_RAM_SIZE,
                  EXIT_ADDRESS: int=DEFAULT_EXIT_ADDRESS,
                  RW_ADDRESS: int=DEFAULT_RW_ADDRESS,
-                 start_thumb: bool=True,
-                 z3_timeout: int=1000):
+                 start_thumb: bool=True):
         """
         :param binary: the binary to solve for
         :param input_size: the size of the input
@@ -40,7 +39,6 @@ class PCSolver():
         :param RW_ADDRESS: the IO address
         :param FAULT_ADDRESS: the address that should be written to in the event of a successful fault
         :param start_thumb: whether or not to start running in thumb mode (common in M architectures)
-        :param z3_timeout: the timeout period for each equation in the z3 solver in ms. it will give up after this period
         """
         self.start_thumb = start_thumb
         self.desired_pc = desired_pc
@@ -82,7 +80,6 @@ class PCSolver():
             mem_write_address=EXIT_ADDRESS,
             action=self._exit_hook
         )
-        self.state.solver._solver.timeout = z3_timeout  # 1 second timeout for solving a single formula
         # for IO write and fault hook, we can just ignore it since it's not useful for us
         self.logger = logging.getLogger(__name__)
     
