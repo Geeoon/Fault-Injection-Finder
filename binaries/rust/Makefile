@@ -21,6 +21,9 @@ CFLAGS += -O2
 CFLAGS += -ffunction-sections
 CFLAGS += -fdata-sections
 LDFLAGS += -Wl,--gc-sections
+# No Rust target calls pwned(), so --gc-sections would discard it.  Force the
+# linker to treat it as a root so the shellcode is kept in every binary.
+LDFLAGS += -Wl,--undefined=pwned
 LDFLAGS += -nostartfiles
 LDFLAGS += -T linkerfile.ld
 CFLAGS += -ffreestanding
