@@ -4,14 +4,14 @@
 extern void pwned(void);
 
 int main(void) {
-    char shellcode_buffer[64];
+    char shellcode_buffer[80];
     
     AES_CTX ctx;
     const unsigned char key[AES_KEY_SIZE] = { 0xe7, 0x7d, 0xbb, 0xa2, 0x30, 0x9c, 0xdc, 0xa3 };
     unsigned char data[AES_BLOCK_SIZE];
     
     // fill the buffer
-    int n = _read(0, shellcode_buffer, 64);
+    int n = _read(0, shellcode_buffer, 80);
     // get data
     n = _read(0, data, AES_BLOCK_SIZE);
 
