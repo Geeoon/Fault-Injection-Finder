@@ -1,6 +1,7 @@
 CC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
 AR=arm-none-eabi-ar
+AS=arm-none-eabi-as
 
 # wolfSSL source tree lives here (full clone of https://github.com/wolfSSL/wolfssl)
 # Layout: $(WOLFSSL_DIR)/wolfcrypt/src/*.c    <- sources
@@ -27,9 +28,15 @@ CFLAGS += -I.                      # resolves "user_settings.h" at repo root
 CFLAGS += -I$(WOLFSSL_DIR)         # resolves "wolfssl/wolfcrypt/..." -> wolfssl/wolfssl/wolfcrypt/...
 CFLAGS += -DWOLFSSL_USER_SETTINGS
 
+# UART shellcode loader: assembled into a raw position-independent payload
+SHELLCODE_SRC := shellcode/uart_shell.s
+SHELLCODE_OBJ := $(SHELLCODE_SRC:.s=.o)
+SHELLCODE_BIN := $(SHELLCODE_SRC:.s=.bin)
+ASFLAGS += -mthumb -march=armv6-m
+
 .PRECIOUS: %.s %.elf
 
-all: infinite_loop.bin password.bin exit.bin hello_world.bin echo.bin pc_test.bin sha256.bin aes_ecb.bin pc_test_complex.bin constraints.bin md5.bin chacha20.bin wolfssl_blake2b.bin wolfssl_ed25519_round.bin wolfssl_ed25519_sign.bin wolfssl_ed25519_verify.bin wolfssl_aes_ecb_round.bin wolfssl_aes_ecb_encrypt.bin wolfssl_aes_ecb_decrypt.bin
+all: infinite_loop.bin password.bin exit.bin hello_world.bin echo.bin pc_test.bin sha256.bin aes_ecb.bin pc_test_complex.bin constraints.bin md5.bin chacha20.bin wolfssl_blake2b.bin wolfssl_ed25519_round.bin wolfssl_ed25519_sign.bin wolfssl_ed25519_verify.bin wolfssl_aes_ecb_round.bin wolfssl_aes_ecb_encrypt.bin wolfssl_aes_ecb_decrypt.bin $(SHELLCODE_BIN)
 
 # --- wolfSSL library build ---
 # Add source files here as you enable more wolfssl features
@@ -81,9 +88,19 @@ $(foreach t,$(TARGETS),$(eval $(call TARGET_RULES,$(t))))
 %.bin: %.elf
 	$(OBJCOPY) -O binary $< $@
 
+$(SHELLCODE_OBJ): $(SHELLCODE_SRC)
+	$(AS) $(ASFLAGS) $< -o $@
+
+$(SHELLCODE_BIN): $(SHELLCODE_OBJ)
+	$(OBJCOPY) -O binary $< $@
+
+.PHONY: shellcode
+shellcode: $(SHELLCODE_BIN)
+
 clean:
 	rm -f $(addsuffix .bin,$(TARGETS)) \
 	      $(addsuffix .elf,$(TARGETS)) \
 	      $(addsuffix .s,$(TARGETS)) \
 	      stubs.s pwned.s libwolfssl.a $(WOLFSSL_OBJS) \
+	      $(SHELLCODE_BIN) $(SHELLCODE_OBJ) \
 	      $(foreach t,$(TARGETS),$(wildcard source/$(t)/*.o))
