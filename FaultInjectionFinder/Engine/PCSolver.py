@@ -19,6 +19,7 @@ class PCSolver():
                  fault_index: int,
                  input_size: int,
                  desired_pc: int,
+                 before: bytes=b'',
                  BINARY_ADDRESS: int=DEFAULT_BINARY_ADDRESS,
                  RAM_ADDRESS: int=DEFAULT_RAM_ADDRESS,
                  RAM_SIZE: int=DEFAULT_RAM_SIZE,
@@ -31,6 +32,7 @@ class PCSolver():
         :param fault_index: the "clock cycle" for the fault to occur on
         :param cycle_insn_map: the cycles to instruction called map
         :param desired_pc: the program counter we want to solve for, make sure to set the thumb bit if desired
+        :param before: the concrete inputs to give before the symbolic inputs.  Probably your shellcode.
         :param BINARY_ADDRESS: the address where the binary should be loaded
         :param BINARY_MAX_SIZE: the size of flash allocated for the binary
         :param RAM_ADDRESS: the starting address of the RAM
@@ -40,6 +42,7 @@ class PCSolver():
         :param FAULT_ADDRESS: the address that should be written to in the event of a successful fault
         :param start_thumb: whether or not to start running in thumb mode (common in M architectures)
         """
+        self.before = before
         self.start_thumb = start_thumb
         self.desired_pc = desired_pc
         self.fault_index = fault_index
@@ -85,8 +88,16 @@ class PCSolver():
     
     def _io_read_hook(self, state):
         consumed = state.globals.get('inputs_consumed', 0)
-        # if consumed < self.input_size:  # removed so we always send symbollic inputs
-        if True:
+        if consumed < len(self._before_input):  # send any before concrete values
+            # send a concrete "before" byte
+            data = (self._before_input[0]).to_bytes(1)
+            self._before_input = self._before_input[1:]
+            state.memory.store(
+                self.RW_ADDRESS,
+                claripy.BVV(data, 8),  # single null byte
+                endness=self.project.arch.memory_endness
+            )
+        else:
             # give a symbollic byte
             sym_inp = claripy.BVS('io_read', 8)  # single symbolic input
             symbolic_inputs = state.globals.get('symbolic_inputs', [])
@@ -98,13 +109,6 @@ class PCSolver():
                 endness=self.project.arch.memory_endness
             )
             state.globals['inputs_consumed'] = consumed + 1
-        else:
-            # send a null byte
-            state.memory.store(
-                self.RW_ADDRESS,
-                claripy.BVV(0x0, 8),  # single null byte
-                endness=self.project.arch.memory_endness
-            )
 
     def _exit_hook(self, state):
         # stop angr
@@ -137,6 +141,7 @@ class PCSolver():
         """
         Run the solver.
         """
+        self._before_input = self.before
         simgr = self.project.factory.simgr(
             self.state,
             save_unconstrained=True,
@@ -190,5 +195,5 @@ class PCSolver():
         for state in simgr.found:  # for each found state, try to find a solution
             soln = self._find_solution(state)
             if soln is not None:
-                return soln
+                return self.before + soln
         return None

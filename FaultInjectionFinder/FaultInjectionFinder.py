@@ -8,6 +8,7 @@ class FaultInjectionFinder():
             self, 
             binary_path: str, 
             input: bytes, 
+            before: bytes=b'',
             expected_output: bytes=None, 
             expected_exit: int=None, 
             expected_regs: dict=None, 
@@ -23,6 +24,7 @@ class FaultInjectionFinder():
         Initializer for the FaultInjetionFinder
         :param binary_path: the path to the binary to examine
         :param input: the input to give the binary, every time it does an IO read
+        :param before: the input to give the binary before symbolic varibles, before @p input
         :param expected_output: the expected output of the program for a successful fault
         :param expected_exit: the expected exit code of the program for a successful fault
         :param expected_regs: the expected registers of the program for a successful fault
@@ -47,6 +49,7 @@ class FaultInjectionFinder():
         self.start_thumb = start_thumb
         self.desired_pc = desired_pc
         self.input = input
+        self.before = before
         self.max_iter = max_iter
         self.user_sel = user_sel
         self.binary_addr = binary_addr
@@ -79,7 +82,7 @@ class FaultInjectionFinder():
 
         self.engine = FIEngine(
             binary=self.binary,
-            input=self.input,
+            input=self.before + self.input,
             start_thumb=self.start_thumb,
             BINARY_ADDRESS=self.binary_addr,
             skip_addrs=list(map(lambda target: target["address"] & ~1, skip_targets)) if skip_targets else None,
@@ -115,6 +118,7 @@ class FaultInjectionFinder():
                             fault_cycle,
                             len(self.input),
                             self.desired_pc,
+                            self.before,
                             start_thumb=self.start_thumb,
                             BINARY_ADDRESS=self.binary_addr
                         )

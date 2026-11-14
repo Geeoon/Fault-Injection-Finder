@@ -11,7 +11,7 @@
     LDR R1, [R4]        @ load the I/O address; R1 = 0x03001000; this is where R0 points to
     LDR R2, [R4, #4]    @ index variable, initialize to max shellcode size; R2 = 0x2000
     LDR R3, [R1]        @ read a byte from UART
-    STRB R3, [R4]         @ add the instruction to memory
+    STRB R3, [R4]       @ add the instruction to memory
     ADDS R4, #1         @ increment the shellcode pointer
     SUBS R2, R2, #1     @ subtract index variable by 1; R2 = R2 - 1
     BNE . - 8           @ if index != 0, go back 4 instructions

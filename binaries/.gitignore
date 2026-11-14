@@ -3,6 +3,7 @@
 *.s
 !c/startup.s
 !c/shellcode/uart_shell.s
+!c/shellcode/fibonacci.s
 !c/source/pc_test/main.s
 **.o
 wolfssl

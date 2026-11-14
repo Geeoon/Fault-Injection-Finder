@@ -47,6 +47,7 @@ def hex_or_dec(value):
 parser = argparse.ArgumentParser(description="Automatically finds hardware security vulnerabilities in binaries.  Only support ARM.")
 parser.add_argument("binary_path", type=existing_path, help="The binary to examine")
 parser.add_argument("input_path", type=existing_path, help="The path to the input to the program")
+parser.add_argument("-r", "--before-input", type=existing_path, default=None, help="Input to always give the program before the symbolic inputs")
 parser.add_argument("-s", "--simulate", type=nonnegative_int, metavar="INDEX", default=None, help="Runs a Unicorn simulation with the fault at an nth instruction issue.  Ignores all other flags besides --max_iterations and --verbose.")
 parser.add_argument("-i", "--max-iterations", type=nonnegative_int, default=10000, help="The maximum number of instructions to run in the binary before ending early")
 parser.add_argument("-o", "--expected-output", type=existing_path, default=None, help="The expected output of the program on a successful security incident")
@@ -83,6 +84,7 @@ logger.setLevel(max(logging.WARNING - 10 * args.verbose, logging.DEBUG))
 
 # read input
 bin_in = b''
+bin_in_before = b''
 expected_output = None
 with open(args.input_path, "rb") as file:
     bin_in = file.read()
@@ -91,8 +93,14 @@ if args.expected_output is not None:
     with open(args.expected_output, "rb") as file:
         expected_output = file.read()
 
+if args.before_input:
+    bin_in_before = b''
+    with open(args.before_input, "rb") as file:
+        bin_in_before = file.read()
+
 finder = FaultInjectionFinder(binary_path=args.binary_path,
                               input=bin_in,
+                              before=bin_in_before,
                               expected_output=expected_output,
                               expected_exit=args.expected_exit,
                               desired_pc=args.desired_pc,

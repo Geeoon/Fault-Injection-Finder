@@ -28,15 +28,15 @@ CFLAGS += -I.                      # resolves "user_settings.h" at repo root
 CFLAGS += -I$(WOLFSSL_DIR)         # resolves "wolfssl/wolfcrypt/..." -> wolfssl/wolfssl/wolfcrypt/...
 CFLAGS += -DWOLFSSL_USER_SETTINGS
 
-# UART shellcode loader: assembled into a raw position-independent payload
-SHELLCODE_SRC := shellcode/uart_shell.s
-SHELLCODE_OBJ := $(SHELLCODE_SRC:.s=.o)
-SHELLCODE_BIN := $(SHELLCODE_SRC:.s=.bin)
+# Shellcode payloads: assembled into raw position-independent binaries
+SHELLCODE_SRCS := shellcode/uart_shell.s shellcode/fibonacci.s
+SHELLCODE_OBJS := $(SHELLCODE_SRCS:.s=.o)
+SHELLCODE_BINS := $(SHELLCODE_SRCS:.s=.bin)
 ASFLAGS += -mthumb -march=armv6-m
 
 .PRECIOUS: %.s %.elf
 
-all: infinite_loop.bin password.bin exit.bin hello_world.bin echo.bin pc_test.bin sha256.bin aes_ecb.bin pc_test_complex.bin constraints.bin md5.bin chacha20.bin wolfssl_blake2b.bin wolfssl_ed25519_round.bin wolfssl_ed25519_sign.bin wolfssl_ed25519_verify.bin wolfssl_aes_ecb_round.bin wolfssl_aes_ecb_encrypt.bin wolfssl_aes_ecb_decrypt.bin $(SHELLCODE_BIN)
+all: infinite_loop.bin password.bin exit.bin hello_world.bin echo.bin pc_test.bin sha256.bin aes_ecb.bin pc_test_complex.bin constraints.bin md5.bin chacha20.bin wolfssl_blake2b.bin wolfssl_ed25519_round.bin wolfssl_ed25519_sign.bin wolfssl_ed25519_verify.bin wolfssl_aes_ecb_round.bin wolfssl_aes_ecb_encrypt.bin wolfssl_aes_ecb_decrypt.bin $(SHELLCODE_BINS) toy_aes_ecb.bin
 
 # --- wolfSSL library build ---
 # Add source files here as you enable more wolfssl features
@@ -76,7 +76,7 @@ extra_objs = $(patsubst %.c,%.o,\
 				$(filter-out source/$(1)/main.c,\
 					$(wildcard source/$(1)/*.c)))
 
-TARGETS := infinite_loop password exit hello_world echo pc_test sha256 aes_ecb pc_test_complex constraints md5 chacha20 wolfssl_blake2b wolfssl_ed25519_round wolfssl_ed25519_sign wolfssl_ed25519_verify wolfssl_aes_ecb_round wolfssl_aes_ecb_encrypt wolfssl_aes_ecb_decrypt
+TARGETS := infinite_loop password exit hello_world echo pc_test sha256 aes_ecb pc_test_complex constraints md5 chacha20 wolfssl_blake2b wolfssl_ed25519_round wolfssl_ed25519_sign wolfssl_ed25519_verify wolfssl_aes_ecb_round wolfssl_aes_ecb_encrypt wolfssl_aes_ecb_decrypt toy_aes_ecb
 
 define TARGET_RULES
 $(1).elf: $(1).s stubs.s startup.s pwned.s $(call extra_objs,$(1)) libwolfssl.a
@@ -88,19 +88,19 @@ $(foreach t,$(TARGETS),$(eval $(call TARGET_RULES,$(t))))
 %.bin: %.elf
 	$(OBJCOPY) -O binary $< $@
 
-$(SHELLCODE_OBJ): $(SHELLCODE_SRC)
+$(SHELLCODE_OBJS): shellcode/%.o: shellcode/%.s
 	$(AS) $(ASFLAGS) $< -o $@
 
-$(SHELLCODE_BIN): $(SHELLCODE_OBJ)
+$(SHELLCODE_BINS): shellcode/%.bin: shellcode/%.o
 	$(OBJCOPY) -O binary $< $@
 
 .PHONY: shellcode
-shellcode: $(SHELLCODE_BIN)
+shellcode: $(SHELLCODE_BINS)
 
 clean:
 	rm -f $(addsuffix .bin,$(TARGETS)) \
 	      $(addsuffix .elf,$(TARGETS)) \
 	      $(addsuffix .s,$(TARGETS)) \
 	      stubs.s pwned.s libwolfssl.a $(WOLFSSL_OBJS) \
-	      $(SHELLCODE_BIN) $(SHELLCODE_OBJ) \
+	      $(SHELLCODE_BINS) $(SHELLCODE_OBJS) \
 	      $(foreach t,$(TARGETS),$(wildcard source/$(t)/*.o))

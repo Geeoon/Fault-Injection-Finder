@@ -10,7 +10,7 @@ SP = arm_const.UC_ARM_REG_SP
 DEFAULT_BINARY_ADDRESS = 0x1000000
 DEFAULT_BINARY_MAX_SIZE = 0x100000
 DEFAULT_RAM_ADDRESS = 0x2000000
-DEFAULT_RAM_SIZE = 0x10000
+DEFAULT_RAM_SIZE = 0x20000
 DEFAULT_EXIT_ADDRESS = 0x3000000
 DEFAULT_RW_ADDRESS = 0x3001000
 DEFAULT_FAULT_ADDRESS = 0x3002000
@@ -113,7 +113,7 @@ class FIEngine():
         self.mu = Uc(UC_ARCH_ARM, (UC_MODE_THUMB | UC_MODE_MCLASS) if self.start_thumb else UC_MODE_ARM)
 
         self.mu.mem_map(self.BINARY_ADDRESS, self.BINARY_MAX_SIZE, UC_PROT_READ | UC_PROT_EXEC)  # map the binary as read and execute only
-        self.mu.mem_map(self.RAM_ADDRESS, self.RAM_SIZE, UC_PROT_READ | UC_PROT_WRITE)  # map RAM as read and write only  (maybe add execute for fun?)
+        self.mu.mem_map(self.RAM_ADDRESS, self.RAM_SIZE, UC_PROT_READ | UC_PROT_WRITE | UC_PROT_EXEC)  # map RAM as read and write only  (maybe add execute for fun?)
         self.mu.mem_map(self.EXIT_ADDRESS, 0x1000, UC_PROT_WRITE)  # add exit hook to memory map
         self.mu.mem_map(self.RW_ADDRESS, 0x1000, UC_PROT_READ | UC_PROT_WRITE)  # add IO hook to memory map
         self.mu.mem_map(self.FAULT_ADDRESS, 0x1000, UC_PROT_WRITE)  # fault hook to memory map
