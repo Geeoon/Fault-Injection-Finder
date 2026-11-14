@@ -1,8 +1,9 @@
 *.elf
 *.bin
 *.s
-!startup.s
-!source/pc_test/main.s
+!c/startup.s
+!c/shellcode/uart_shell.s
+!c/source/pc_test/main.s
 **.o
 wolfssl
 libwolfssl.a
